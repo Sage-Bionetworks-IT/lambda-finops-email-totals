@@ -1,73 +1,178 @@
+from email_totals import handler
+
 import json
+import os
 
+import boto3
 import pytest
+from botocore.stub import Stubber
 
-from hello_world import app
 
-
-@pytest.fixture()
-def apigw_event():
-    """ Generates API GW Event"""
-
-    return {
-        "body": '{ "test": "body"}',
-        "resource": "/{proxy+}",
-        "requestContext": {
-            "resourceId": "123456",
-            "apiId": "1234567890",
-            "resourcePath": "/{proxy+}",
-            "httpMethod": "POST",
-            "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
-            "accountId": "123456789012",
-            "identity": {
-                "apiKey": "",
-                "userArn": "",
-                "cognitoAuthenticationType": "",
-                "caller": "",
-                "userAgent": "Custom User Agent String",
-                "user": "",
-                "cognitoIdentityPoolId": "",
-                "cognitoIdentityId": "",
-                "cognitoAuthenticationProvider": "",
-                "sourceIp": "127.0.0.1",
-                "accountId": "",
-            },
-            "stage": "prod",
-        },
-        "queryStringParameters": {"foo": "bar"},
-        "headers": {
-            "Via": "1.1 08f323deadbeefa7af34d5feb414ce27.cloudfront.net (CloudFront)",
-            "Accept-Language": "en-US,en;q=0.8",
-            "CloudFront-Is-Desktop-Viewer": "true",
-            "CloudFront-Is-SmartTV-Viewer": "false",
-            "CloudFront-Is-Mobile-Viewer": "false",
-            "X-Forwarded-For": "127.0.0.1, 127.0.0.2",
-            "CloudFront-Viewer-Country": "US",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Upgrade-Insecure-Requests": "1",
-            "X-Forwarded-Port": "443",
-            "Host": "1234567890.execute-api.us-east-1.amazonaws.com",
-            "X-Forwarded-Proto": "https",
-            "X-Amz-Cf-Id": "aaaaaaaaaae3VYQb9jd-nvCd-de396Uhbp027Y2JvkCPNLmGJHqlaA==",
-            "CloudFront-Is-Tablet-Viewer": "false",
-            "Cache-Control": "max-age=0",
-            "User-Agent": "Custom User Agent String",
-            "CloudFront-Forwarded-Proto": "https",
-            "Accept-Encoding": "gzip, deflate, sdch",
-        },
-        "pathParameters": {"proxy": "/examplepath"},
-        "httpMethod": "POST",
-        "stageVariables": {"baz": "qux"},
-        "path": "/examplepath",
+mock_ce_response = {
+  'GroupDefinitions': [
+    {'Type': 'COST_CATEGORY', 'Key': 'Owner Email'}
+  ],
+  'ResultsByTime': [
+    {
+      'TimePeriod': {'Start': '2023-03-01', 'End': '2023-04-01'},
+       'Total': {},
+      'Groups': [
+          {
+            'Keys': ['Owner Email$'],
+            'Metrics': {
+              'UnblendedCost': {
+                'Amount': '48446.9515396549',
+                'Unit': 'USD'
+              }
+            }
+          },
+          {'Keys': ['Owner Email$user1@synapse.org'], 'Metrics': {'UnblendedCost': {'Amount': '0.30000000264', 'Unit': 'USD'}}},
+          {'Keys': ['Owner Email$user2@synapse.org'], 'Metrics': {'UnblendedCost': {'Amount': '3.000000264', 'Unit': 'USD'}}},
+          {'Keys': ['Owner Email$user3@sagebase.org'], 'Metrics': {'UnblendedCost': {'Amount': '30.000000264', 'Unit': 'USD'}}},
+        ],
+        'Estimated': False
     }
+  ],
+  'DimensionValueAttributes': [],
+  'ResponseMetadata': {
+    'RequestId': '15f5cdde-0ea0-420f-867a-b862afeca967',
+    'HTTPStatusCode': 200,
+    'HTTPHeaders': {
+      'date': 'Wed, 31 May 2023 20:57:36 GMT',
+      'content-type': 'application/x-amz-json-1.1',
+      'content-length': '14561',
+      'connection': 'keep-alive',
+      'x-amzn-requestid': '15f5cdde-0ea0-420f-867a-b862afeca967',
+      'cache-control': 'no-cache'
+    },
+    'RetryAttempts': 0
+  }
+}
+
+expected_ce_costinfo = [
+ {'Estimated': False,
+  'Groups': [{'Keys': ['Owner Email$'],
+              'Metrics': {'UnblendedCost': {'Amount': '48446.9515396549',
+                                            'Unit': 'USD'}}},
+             {'Keys': ['Owner Email$user1@synapse.org'],
+              'Metrics': {'UnblendedCost': {'Amount': '0.30000000264',
+                                            'Unit': 'USD'}}},
+             {'Keys': ['Owner Email$user2@synapse.org'],
+              'Metrics': {'UnblendedCost': {'Amount': '3.000000264',
+                                            'Unit': 'USD'}}},
+             {'Keys': ['Owner Email$user3@sagebase.org'],
+              'Metrics': {'UnblendedCost': {'Amount': '30.000000264',
+                                            'Unit': 'USD'}}}],
+  'TimePeriod': {'End': '2023-04-01',
+                 'Start': '2023-03-01'},
+  'Total': {}},
+]
+
+expected_emails_all = {
+  '': 48446.9515396549,
+  'user1@synapse.org': 0.30000000264,
+  'user2@synapse.org': 3.000000264,
+  'user3@sagebase.org': 30.000000264,
+}
+
+expected_emails_filtered = {
+  'user2@synapse.org': 3.000000264,
+  'user3@sagebase.org': 30.000000264,
+}
+
+expected_emails_no_min = {
+  'user1@synapse.org': 0.30000000264,
+  'user2@synapse.org': 3.000000264,
+  'user3@sagebase.org': 30.000000264,
+}
+
+mock_approved_emails = 'user3@sagebase.org,user4@synapse.org'
+
+expected_emails_restricted = {
+  'user3@sagebase.org': 30.000000264,
+}
+
+mock_restricted_compare = {
+  'user3@sagebase.org': 20.000000264,
+}
+
+mock_syn_team = 'team'
+mock_syn_members = [
+    {'member': {'userName': 'user1'}},
+    {'member': {'userName': 'user2'}},
+]
+
+expected_sage_emails = [
+    'user1@synapse.org',
+    'user2@synapse.org',
+]
+
+mock_ses_response = { 'MessageId': 'testId' }
 
 
-def test_lambda_handler(apigw_event, mocker):
+def test_get_team_sage(mocker):
+    mock_syn_client = mocker.MagicMock(spec=handler.syn_client)
 
-    ret = app.lambda_handler(apigw_event, "")
-    data = json.loads(ret["body"])
+    mock_syn_client.getTeam.return_value = mock_syn_team
+    mock_syn_client.getTeamMembers.return_value = mock_syn_members
 
-    assert ret["statusCode"] == 200
-    assert "message" in ret["body"]
-    assert data["message"] == "hello world"
-    # assert "location" in data.dict_keys()
+    handler.syn_client = mock_syn_client
+
+    found_sage_emails = handler.get_team_sage_emails()
+    assert found_sage_emails == expected_sage_emails
+
+
+def test_get_ce_costinfo(mocker):
+    with Stubber(handler.ce_client) as _stub:
+        _stub.add_response('get_cost_and_usage', mock_ce_response)
+
+        found_ce_costinfo = handler.get_ce_costinfo(handler.target_month)
+        assert found_ce_costinfo == expected_ce_costinfo
+
+
+def test_get_email_totals(mocker):
+    found_emails_all = handler.get_email_totals(expected_ce_costinfo)
+    assert found_emails_all == expected_emails_all
+
+
+@pytest.mark.parametrize(
+        "minimum,restrict,expected_emails",
+        [
+            ('1.0', 'True', expected_emails_restricted),
+            ('1.0', 'False', expected_emails_filtered),
+            ('0.0', 'False', expected_emails_no_min),
+        ]
+    )
+def test_filter_sage_emails(mocker, minimum, restrict, expected_emails):
+    env_vars = {
+        'MINIMUM': minimum,
+        'RESTRICT': restrict,
+        'APPROVED': mock_approved_emails,
+    }
+    mocker.patch.dict(os.environ, env_vars)
+
+    found_emails = handler.filter_email_list(expected_emails_all, expected_sage_emails)
+    assert found_emails == expected_emails
+
+
+def test_create_email(mocker):
+    mocker.patch('email_totals.handler.send_report_email', autospec=True)
+
+    handler.create_and_send_emails(expected_emails_restricted, mock_restricted_compare)
+
+
+def test_send_email(mocker):
+    recipient = 'user1@sagebase.org'
+    email_html = 'test body'
+
+    with Stubber(handler.ses_client) as _stub:
+        _stub.add_response('send_email', mock_ses_response)
+
+        env_vars = {
+            'SENDER': 'test@example.com',
+        }
+        mocker.patch.dict(os.environ, env_vars)
+
+        handler.send_report_email(recipient, email_html)
+
+        # assert that no exception is raised
