@@ -1,6 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: Yaml template to stop AWS Services like RDS, Aurora, EKS in scheduled interval
+Description: >
+  A lambda for sending monthly cloud-spend emails with a link to cost explorer
 
 Parameters:
 
@@ -15,6 +16,14 @@ Parameters:
     Description: Sender Email Address
     Default: it@sagebase.org
 
+  MinimumValue:
+    Type: String
+    Description: 'Minimum total to send an email. Default: $1.0'
+    Default: '1.0'
+    AllowedPattern: '^\d+(\.\d+)?$'
+    ConstraintDescription: 'must be a floating point number'
+
+# parameters for testing with a canary deploy
   RestrictRecipients:
     Type: String
     Description: Whether or not to restict sending emails to approved addresses
@@ -27,13 +36,6 @@ Parameters:
     Type: String
     Description: Comma-separated list of approved email recipients
     Default: ''
-
-  MinimumValue:
-    Type: String
-    Description: 'Minimum total to send an email. Default: $1.0'
-    Default: '1.0'
-    AllowedPattern: '^\d+(\.\d+)?$'
-    ConstraintDescription: 'must be a floating point number'
 
 
 Resources:
@@ -54,13 +56,42 @@ Resources:
         - PolicyName: LambdaAccess
           PolicyDocument:
             Statement:
-            - Action: ["logs:DescribeLogStreams", "logs:CreateLogStream", "logs:PutLogEvents", "logs:CreateLogGroup"]
+            - Action:
+                - "logs:DescribeLogStreams"
+                - "logs:CreateLogStream"
+                - "logs:PutLogEvents"
+                - "logs:CreateLogGroup"
               Resource: "*"
               Effect: Allow
-            - Action: ["ce:DescribeCostCategoryDefinition","ce:GetRightsizingRecommendation","ce:GetCostAndUsage", "ce:GetSavingsPlansUtilization","ce:GetAnomalies","ce:GetReservationPurchaseRecommendation","ce:ListCostCategoryDefinitions", "ce:GetCostForecast","ce:GetPreferences","ce:GetReservationUtilization","ce:GetCostCategories","ce:GetSavingsPlansPurchaseRecommendation", "ce:GetDimensionValues","ce:GetSavingsPlansUtilizationDetails","ce:GetAnomalySubscriptions","ce:GetCostAndUsageWithResources", "ce:DescribeReport","ce:GetReservationCoverage","ce:GetSavingsPlansCoverage","ce:GetAnomalyMonitors","ce:DescribeNotificationSubscription", "ce:GetTags","ce:GetUsageForecast","ce:GetCostAndUsage"]
+            - Action:
+                - "ce:DescribeCostCategoryDefinition"
+                - "ce:GetRightsizingRecommendation"
+                - "ce:GetCostAndUsage"
+                - "ce:GetSavingsPlansUtilization"
+                - "ce:GetAnomalies"
+                - "ce:GetReservationPurchaseRecommendation"
+                - "ce:ListCostCategoryDefinitions"
+                - "ce:GetCostForecast"
+                - "ce:GetPreferences"
+                - "ce:GetReservationUtilization"
+                - "ce:GetCostCategories"
+                - "ce:GetSavingsPlansPurchaseRecommendation"
+                - "ce:GetDimensionValues"
+                - "ce:GetSavingsPlansUtilizationDetails"
+                - "ce:GetAnomalySubscriptions"
+                - "ce:GetCostAndUsageWithResources"
+                - "ce:DescribeReport"
+                - "ce:GetReservationCoverage"
+                - "ce:GetSavingsPlansCoverage"
+                - "ce:GetAnomalyMonitors"
+                - "ce:DescribeNotificationSubscription"
+                - "ce:GetTags"
+                - "ce:GetUsageForecast"
+                - "ce:GetCostAndUsage"
               Resource: "*"
               Effect: Allow
-            - Action: ["ses:*"]
+            - Action:
+                - "ses:*"
               Resource: "*"
               Effect: Allow
 
@@ -85,13 +116,6 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: !Ref ScheduleExpression
-
-#Cloud Watch config
-  MonthlyServicesUsageLogGroup:
-      Type: "AWS::Logs::LogGroup"
-      Properties:
-        RetentionInDays: 90
-        LogGroupName: !Join ["", ["/aws/lambda/", !Ref MonthlyServicesUsage]]
 
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission

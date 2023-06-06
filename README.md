@@ -10,17 +10,45 @@ users who have been tagged as resource owners.
 
 ### Parameters
 
-| Parameter Name      | Allowed Values                                                                                                             | Default Value         | Description                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
-| ScheduleExpression  | [EventBridge Schedule Expression](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchevents-expressions.html) | `cron(30 10 2 * ? *)` | Schedule for running the lambda                                                      |
-| SenderEmail         | any email address                                                                                                          | `it@sagebase.org`     | Value to use for the `From` email field                                              |
-| RestrictRecpipients | `True` or `False`                                                                                                          | `True`                | Only send emails to recipients listed in `ApprovedRecipients`                        |
-| ApprovedRecpipients | Comma-delimited list of email addresses                                                                                    | `None`                | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
-| MinimumValue        | Floating-point number                                                                                                      | `1.0`                 | Emails will not be sent for totals less than this amount                             |
+| Parameter Name     | Allowed Values                          | Default Value         | Description                                                                          |
+| ------------------ | --------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| ScheduleExpression | EventBridge Schedule Expression         | `cron(30 10 2 * ? *)` | Schedule for running the lambda                                                      |
+| SenderEmail        | Any email address                       | `it@sagebase.org`     | Value to use for the `From` email field                                              |
+| RestrictRecipients | `True` or `False`                       | `True`                | Only send emails to recipients listed in `ApprovedRecipients`                        |
+| ApprovedRecipients | Comma-delimited list of email addresses | `None`                | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
+| MinimumValue       | Floating-point number                   | `1.0`                 | Emails will not be sent for totals less than this amount                             |
+
+#### ScheduleExpression
+
+[EventBridge schedule expression](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchevents-expressions.html)
+describing how often to run the lambda. By default it runs at 10:30am UTC on the
+2nd of each month.
+
+#### SenderEmail
+
+This email address will appear is the `From` field, and must be
+[verified](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
+before emails will successfully send.
+
+#### RestrictRecipients
+
+Boolean value to toggle enforcing `ApprovedRecipients`an allow-list of email
+recipients. Useful for testing.
+
+#### ApprovedRecipients
+
+An allow-list of recipient addresses, only used when `RestrictRecipients` is
+`True`. Useful for testing.
+
+#### MinimumValue
+
+Don't send an email if the reported monthly total is less than this amount, by
+default $1.
 
 ### Triggering
 
-The lambda is configured to run on a schedule, by default at 10:30am UTC on the 2nd of each month.
+The lambda is configured to run on a schedule, by default at 10:30am UTC on the
+2nd of each month.
 
 ## Development
 
@@ -134,6 +162,11 @@ aws serverlessrepo put-application-policy \
 
 ## Install Lambda into AWS
 
+When using AWS Organizations, the lambda should be deployed once in the master
+account to aggregate all costs from the member accounts. Otherwise it must be
+deployed into each separate account, resulting in a separate email for each
+account total.
+
 ### Sceptre
 
 Create the following [sceptre](https://github.com/Sceptre/sceptre) file
@@ -174,3 +207,25 @@ We have setup our CI to automate a releases. To kick off the process just create
 a tag (i.e 0.0.1) and push to the repo. The tag must be the same number as the
 current version in [template.yaml](template.yaml). Our CI will do the work of
 deploying and publishing the lambda.
+
+### Initial Release
+
+Some manual verification and testing must be performed with the initial release.
+
+#### Sender Email Verification
+
+In order for SES to send emails, the sender address must be
+[verified](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
+prior to the first run of the lambda.
+
+#### Canary Run
+
+Once the sender address has been verified, the lambda should be tested with a
+canary run, restricting output to a list of approved "beta testers" by using the
+`RestrictRecipients` and `ApprovedRecipients` parameters.
+
+#### Exit SES Sandbox
+
+Once the sender email address has been verified and a canary run has succeeded,
+the account must be move out of the
+[SES sandbox](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html).

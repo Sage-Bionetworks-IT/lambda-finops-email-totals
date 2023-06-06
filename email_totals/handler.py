@@ -1,12 +1,18 @@
 # Monthly Cost Reporting using Lambda function
 
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 
 import boto3
 import synapseclient as syn
 from botocore.exceptions import ClientError
+
+
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
+
 
 # Create Cost Explorer service client using saved credentials
 ce_client = boto3.client('ce')
@@ -64,8 +70,8 @@ else:
     compare_month['Start'] = f'{today.year}-{(today.month - 3):02}-01'
     compare_month['End'] = f'{today.year}-{(today.month - 2):02}-01'
 
-print(f"Target month: {target_month}")
-print(f"Compare month: {compare_month}")
+LOG.info(f"Target month: {target_month}")
+LOG.info(f"Compare month: {compare_month}")
 
 
 # get list of synapse users in team Sage
@@ -154,20 +160,20 @@ def filter_email_list(all_totals, team_sage):
     # listed as approved recipients, otherwise send all valid emails
     if os.environ['RESTRICT'] == 'True':
         restrict_send = True
-        print(f'Only sending emails to: {restrict_to}')
+        LOG.warning(f'Only sending emails to: {restrict_to}')
     else:
         restrict_send = False
 
     # loop over all our totals
     for k, v in all_totals.items():
         if v < min_value:
-            print(f"Skipping entry less than ${min_value}: {k} (${v})")
+            LOG.warning(f"Skipping entry less than ${min_value}: {k} (${v})")
 
         elif restrict_send:
             if k in restrict_to:
                 report_dict[k] = v
             else:
-                print(f"Restricting email: {k} (${v})")
+                LOG.warning(f"Restricting email: {k} (${v})")
 
         else:
             if k.endswith(sagebase_email) or k.endswith(sagebio_email):
@@ -177,10 +183,10 @@ def filter_email_list(all_totals, team_sage):
                 if k in team_sage:
                     report_dict[k] = v
                 else:
-                    print(f"Skipping external synapse user: {k} (${v})")
+                    LOG.warning(f"Skipping external synapse user: {k} (${v})")
 
             else:
-                print(f"Skipping invalid email: {k} (${v})")
+                LOG.warning(f"Skipping invalid email: {k} (${v})")
 
     return report_dict
 
@@ -214,7 +220,7 @@ def create_and_send_emails(target_totals, compare_totals):
 
 
     for email, total in target_totals.items():
-        print(f'Processing email for {email} (${total})')
+        LOG.debug(f'Processing email for {email} (${total})')
 
         compare_total = None
         if email in compare_totals:
@@ -272,10 +278,9 @@ def send_report_email(recipient, body_html):
 
     # Display an error if something goes wrong.
     except ClientError as e:
-        print(e.response['Error']['Message'])
+        LOG.exception(e)
     else:
-        print("Email sent! Message ID:"),
-        print(response['MessageId'])
+        LOG.info(f"Email sent! Message ID: {response['MessageId']}")
 
 
 #--------------------------------------------------------------------------------------------------
@@ -288,28 +293,29 @@ def lambda_handler(context=None, event=None):
     Analyze per-user totals with month-over-month change, and send a brief email
     '''
 
+    # get team sage from synapse
     sage_emails = get_team_sage_emails()
-    print('Team Sage:')
-    print(json.dumps(sage_emails, indent=2))
+    LOG.debug(f"Team Sage: {sage_emails}")
 
+    # get target month data from ce
     target_info = get_ce_costinfo(target_month)
-    print(target_info)
+    LOG.debug(f"Target month info: {target_info}")
 
+    # get compare month data from ce
     compare_info = get_ce_costinfo(compare_month)
-    #print(compare_info)
+    LOG.debug(f"Compare month info: {compare_info}")
 
+    # transform data into convenient format
     all_target_totals = get_email_totals(target_info)
-    print(all_target_totals)
-
     all_compare_totals = get_email_totals(compare_info)
-    #print(all_compare_totals)
 
+    # filter out external users and miniscule totals
     sage_target_totals = filter_email_list(all_target_totals, sage_emails)
-    print(json.dumps(sage_target_totals, indent=2))
-
     sage_compare_totals = filter_email_list(all_compare_totals, sage_emails)
-    print(json.dumps(sage_compare_totals, indent=2))
 
+    # TODO: process account owner tags and amend owner totals
+
+    # send user emails
     create_and_send_emails(sage_target_totals, sage_compare_totals)
 
     # TODO: also send cost center totals to PIs
