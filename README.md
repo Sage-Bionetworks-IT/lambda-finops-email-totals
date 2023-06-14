@@ -14,8 +14,8 @@ users who have been tagged as resource owners.
 | ------------------ | --------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
 | ScheduleExpression | EventBridge Schedule Expression         | `cron(30 10 2 * ? *)` | Schedule for running the lambda                                                      |
 | SenderEmail        | Any email address                       | `it@sagebase.org`     | Value to use for the `From` email field                                              |
-| RestrictRecipients | `True` or `False`                       | `True`                | Only send emails to recipients listed in `ApprovedRecipients`                        |
-| ApprovedRecipients | Comma-delimited list of email addresses | `None`                | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
+| RestrictRecipients | `True` or `False`                       | `False`               | Only send emails to recipients listed in `ApprovedRecipients`                        |
+| ApprovedRecipients | Comma-delimited list of email addresses | `[]`                  | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
 | MinimumValue       | Floating-point number                   | `1.0`                 | Emails will not be sent for totals less than this amount                             |
 
 #### ScheduleExpression
@@ -32,7 +32,7 @@ before emails will successfully send.
 
 #### RestrictRecipients
 
-Boolean value to toggle enforcing `ApprovedRecipients`an allow-list of email
+Boolean value to toggle enforcing an `ApprovedRecipients` allow-list of email
 recipients. Useful for testing.
 
 #### ApprovedRecipients
@@ -48,7 +48,8 @@ default $1.
 ### Triggering
 
 The lambda is configured to run on a schedule, by default at 10:30am UTC on the
-2nd of each month.
+2nd of each month. Ad-hoc runs for testing can be triggered from the Lambda
+console page.
 
 ## Development
 
@@ -178,8 +179,6 @@ template:
   url: "https://PUBLISH_BUCKET.s3.amazonaws.com/lambda-template/VERSION/lambda-template.yaml"
 stack_name: "lambda-template"
 stack_tags:
-  Department: "Platform"
-  Project: "Infrastructure"
   OwnerEmail: "it@sagebase.org"
 ```
 
@@ -208,9 +207,9 @@ a tag (i.e 0.0.1) and push to the repo. The tag must be the same number as the
 current version in [template.yaml](template.yaml). Our CI will do the work of
 deploying and publishing the lambda.
 
-### Initial Release
+### Initial Deploy
 
-Some manual verification and testing must be performed with the initial release.
+Some manual verification and testing must be performed with the initial deploy.
 
 #### Sender Email Verification
 
@@ -218,14 +217,50 @@ In order for SES to send emails, the sender address must be
 [verified](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
 prior to the first run of the lambda.
 
+#### Canary Email Verification
+
+If the AWS Account is in the SES Sandbox, then recipient addresses will also
+need to be
+[verified](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
+prior to the first run of the lambda.
+
 #### Canary Run
 
-Once the sender address has been verified, the lambda should be tested with a
-canary run, restricting output to a list of approved "beta testers" by using the
+Once the needed addresses have been verified, the lambda should be tested with a
+canary run, restricting output to a list of approved canary users by using the
 `RestrictRecipients` and `ApprovedRecipients` parameters.
+
+```yaml
+template:
+  type: http
+  url: "https://PUBLISH_BUCKET.s3.amazonaws.com/lambda-template/VERSION/lambda-template.yaml"
+stack_name: "lambda-template"
+stack_tags:
+  OwnerEmail: "it@sagebase.org"
+parameters:
+  RestrictRecipients: "True"
+  ApprovedRecipients: "canary1@example.com,canary2@example.com"
+```
 
 #### Exit SES Sandbox
 
 Once the sender email address has been verified and a canary run has succeeded,
-the account must be move out of the
-[SES sandbox](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html).
+the AWS account must be move out of the
+[SES Sandbox](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html).
+
+#### Full Deploy
+
+After moving the AWS account out of the SES Sandbox, redeploy the lambda without
+recipient restrictions.
+
+```yaml
+template:
+  type: http
+  url: "https://PUBLISH_BUCKET.s3.amazonaws.com/lambda-template/VERSION/lambda-template.yaml"
+stack_name: "lambda-template"
+stack_tags:
+  OwnerEmail: "it@sagebase.org"
+parameters:
+  RestrictRecipients: "False"
+  ApprovedRecipients: "canary1@example.com,canary2@example.com"
+```

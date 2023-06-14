@@ -27,7 +27,7 @@ Parameters:
   RestrictRecipients:
     Type: String
     Description: Whether or not to restict sending emails to approved addresses
-    Default: "True"
+    Default: "False"
     AllowedValues:
       - "True"
       - "False"
