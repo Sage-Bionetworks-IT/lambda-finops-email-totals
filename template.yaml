@@ -14,7 +14,12 @@ Parameters:
   SenderEmail:
     Type: String
     Description: Sender Email Address
-    Default: it@sagebase.org
+    Default: '"Cloud Cost Notifications" <cloud-cost-notifications@sagebase.org>'
+
+  SkipRecipients:
+    Type: String
+    Description: Comma-separated list of email recipients to always skip
+    Default: ''
 
   MinimumValue:
     Type: String
@@ -110,6 +115,7 @@ Resources:
           SENDER: !Ref SenderEmail
           RESTRICT: !Ref RestrictRecipients
           APPROVED: !Ref ApprovedRecipients
+          SKIPLIST: !Ref SkipRecipients
           MINIMUM: !Ref MinimumValue
       Events:
         ScheduledEventTrigger:

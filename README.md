@@ -14,6 +14,7 @@ users who have been tagged as resource owners.
 | ------------------ | --------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
 | ScheduleExpression | EventBridge Schedule Expression         | `cron(30 10 2 * ? *)` | Schedule for running the lambda                                                      |
 | SenderEmail        | Any email address                       | `it@sagebase.org`     | Value to use for the `From` email field                                              |
+| SkipRecipients     | Comma-delimited list of email addresses | `[]`                  | Never send emails to recipients in this list                                         |
 | RestrictRecipients | `True` or `False`                       | `False`               | Only send emails to recipients listed in `ApprovedRecipients`                        |
 | ApprovedRecipients | Comma-delimited list of email addresses | `[]`                  | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
 | MinimumValue       | Floating-point number                   | `1.0`                 | Emails will not be sent for totals less than this amount                             |
@@ -29,6 +30,10 @@ describing how often to run the lambda. By default it runs at 10:30am UTC on the
 This email address will appear is the `From` field, and must be
 [verified](https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html)
 before emails will successfully send.
+
+#### SkipRecipients
+
+A skip-list of recipient addresses, never send emails to these addresses.
 
 #### RestrictRecipients
 

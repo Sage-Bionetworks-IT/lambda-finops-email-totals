@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta
 
 import boto3
@@ -178,6 +179,9 @@ def filter_email_list(all_totals, team_sage):
     # get the list of approved recipients from an environment variable
     restrict_to = os.environ['APPROVED'].split(',')
 
+    # get the recipient skiplist from an environment variable
+    skiplist = os.environ['SKIPLIST'].split(',')
+
     # if this environment variable is set, only send emails to recipients
     # listed as approved recipients, otherwise send all valid emails
     if os.environ['RESTRICT'] == 'True':
@@ -191,6 +195,9 @@ def filter_email_list(all_totals, team_sage):
         total = v['total']
         if total < min_value:
             LOG.info(f"Skipping entry less than ${min_value}: {k} (${total})")
+
+        elif k in skiplist:
+            LOG.info(f"Recipient in skiplist: {k} (${total})")
 
         elif restrict_send:
             if k in restrict_to:
@@ -322,6 +329,10 @@ def get_ce_missing_tag_for_email(period, email):
             'Key': 'RESOURCE_ID',
         }],
     )
+
+    # minimal rate limiting
+    # sleep for 10ms after calling get_cost_and_usage_with_resources
+    time.sleep(0.01)
 
     return response['ResultsByTime']
 
@@ -475,8 +486,12 @@ def send_report_email(recipient, body_text, body_html):
                 },
             },
             Source=sender,
-
+            ReturnPath=sender,
         )
+
+        # minimal rate limiting
+        # sleep for 10ms after calling send_email
+        time.sleep(0.01)
 
     # Display an error if something goes wrong.
     except ClientError as e:

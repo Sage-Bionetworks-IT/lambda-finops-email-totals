@@ -526,6 +526,7 @@ def test_filter_sage_emails(mocker, minimum, restrict, expected_emails):
         'MINIMUM': minimum,
         'RESTRICT': restrict,
         'APPROVED': mock_approved_emails,
+        'SKIPLIST': '',
     }
     mocker.patch.dict(os.environ, env_vars)
 
