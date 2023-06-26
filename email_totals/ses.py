@@ -4,7 +4,6 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
