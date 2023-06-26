@@ -1,1 +1,12 @@
-crhelper~=2.0.10
+-i https://pypi.org/simple
+certifi==2023.5.7
+charset-normalizer==3.1.0
+deprecated==1.2.14
+idna==3.4
+importlib-metadata==4.13.0
+keyring==23.4.1
+requests==2.31.0
+synapseclient==2.7.2
+urllib3==1.26.16
+wrapt==1.15.0
+zipp==3.15.0

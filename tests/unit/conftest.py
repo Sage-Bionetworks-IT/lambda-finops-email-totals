@@ -165,3 +165,43 @@ def mock_org_account_no_tags():
 def mock_ses_response():
     response = {'MessageId': 'testId'}
     return response
+
+
+@pytest.fixture()
+def mock_syn_team():
+    response = {
+        'name': 'test team',
+        'id': '123',
+    }
+    return response
+
+
+@pytest.fixture()
+def mock_syn_members():
+    response = [
+        {
+            'teamId': '123',
+            'member': {
+                'ownerId': '456',
+                'userName': 'user1',
+            }
+        }, {
+            'teamId': '123',
+            'member': {
+                'ownerId': '789',
+                'userName': 'user2',
+            }
+        }
+
+    ]
+    return response
+
+
+@pytest.fixture()
+def mock_team_sage():
+    response = [
+        'user1@synapse.org',
+        'user2@synapse.org',
+    ]
+
+    return response

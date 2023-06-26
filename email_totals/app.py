@@ -1,9 +1,8 @@
-from email_totals import ce, org, ses
-
 import logging
 import os
 from datetime import datetime
 
+from email_totals import ce, org, synapse, ses
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -27,19 +26,6 @@ def report_periods(today):
     LOG.info(f"Compare month: {compare_month}")
 
     return target_month, compare_month
-
-
-def get_team_sage_emails():
-    """
-    Get a list of Team Sage emails from Synapse
-    """
-
-    team_sage = []
-
-    # TODO: interact with Synapse to get the members of Team Sage.
-    # For now return an empty list, which will treat all synapse users as external
-
-    return team_sage
 
 
 def get_resource_totals(target_p, compare_p, minimum):
@@ -222,7 +208,7 @@ def lambda_handler(event, context):
     target_month, compare_month = report_periods(now)
 
     # Get Team Sage from Synapse
-    team_sage = get_team_sage_emails()
+    team_sage = synapse.get_team_sage_members()
 
     # Build email summary
     email_summary = build_summary(target_month, compare_month, team_sage)
