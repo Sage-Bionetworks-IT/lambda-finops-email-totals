@@ -1,11 +1,13 @@
 import os
 
+import pytest
 from botocore.stub import Stubber
 
 from email_totals import ses
 
 
-def test_send_email(mocker, mock_ses_response):
+def test_send_email(mocker,
+                    mock_ses_response):
     recipient = 'user@synapse.org'
     text_body = 'test'
     html_body = '<html>test</html>'
@@ -22,3 +24,34 @@ def test_send_email(mocker, mock_ses_response):
 
         # assert that the client function was called
         _stub.assert_no_pending_responses()
+
+
+@pytest.mark.parametrize(
+    "mock_env_restrict,mock_env_approved,mock_env_skiplist,mock_email,result",
+    [
+        ("False", [], [], 'test@example.com', False),  # invalid domain
+        ("False", [], [], 'user1' + ses.synapse_email, True),  # member of Team Sage
+        ("False", [], [], 'external' + ses.synapse_email, False),  # not a member of Team Sage
+        ("False", [], [], 'user' + ses.sagebase_email, True),  # internal Sage domain
+        ("False", [], [], 'user' + ses.sagebio_email, True),  # internal Sage domain
+        ("False", [], ['user' + ses.sagebio_email], 'user' + ses.sagebio_email, False),  # user in skip list
+        ("True", ['user' + ses.sagebio_email], [], 'user' + ses.sagebio_email, True),  # user in approved list
+        ("True", [], [], 'user' + ses.sagebio_email, False),  # user not in approved list
+    ]
+)
+def test_valid_recipient(mocker,
+                         mock_env_approved,
+                         mock_env_restrict,
+                         mock_env_skiplist,
+                         mock_team_sage,
+                         mock_email,
+                         result):
+    env_vars = {
+        'RESTRICT': mock_env_restrict,
+        'APPROVED': ','.join(mock_env_approved),
+        'SKIPLIST': ','.join(mock_env_skiplist),
+    }
+    mocker.patch.dict(os.environ, env_vars)
+
+    found = ses.valid_recipient(mock_email, mock_team_sage)
+    assert found == result

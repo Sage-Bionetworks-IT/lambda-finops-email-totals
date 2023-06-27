@@ -7,6 +7,10 @@ from botocore.exceptions import ClientError
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
+sagebase_email = '@sagebase.org'
+sagebio_email = '@sagebionetworks.org'
+synapse_email = '@synapse.org'
+
 ses_client = boto3.client('ses')
 
 
@@ -19,11 +23,34 @@ def valid_recipient(email, team_sage):
     approved = os.environ['APPROVED'].split(',')
     skiplist = os.environ['SKIPLIST'].split(',')
 
-    # TODO: check recipient email against skiplist and approved list
-    # then check the domain for a sage domain, and check team sage for
-    # a synapse domain
+    # Skip anyone who has opted out
+    if email in skiplist:
+        LOG.info(f"Skipping address: '{email}'")
+        return False
 
-    return True
+    # If sending is restricted, check the approved list
+    if restrict == 'True':
+        if email in approved:
+            return True
+        LOG.info(f"Restricted, skipping address: '{email}'")
+        return False
+
+    # Check for internal domains
+    if email.endswith(sagebase_email) or email.endswith(sagebio_email):
+        return True
+
+    # Check Synapse users against Team Sage
+    if email.endswith(synapse_email):
+        if email in team_sage:
+            return True
+
+        LOG.info(f"Skipping external synapse user: '{email}'")
+        return False
+
+    # Not all tag values are valid email addresses, and uncategorized
+    # costs will be associated with an empty string value
+    LOG.warning(f"Invalid email address: '{email}'")
+    return False
 
 
 def build_email_body(summary):
