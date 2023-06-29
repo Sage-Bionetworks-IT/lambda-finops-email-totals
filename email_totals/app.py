@@ -307,6 +307,10 @@ def get_missing_other_tags(owner):
             account_id = group['Keys'][0]
             resource = group['Keys'][1]
 
+            # Ignore entries with no resource ID
+            if resource == 'NoResourceId':
+                continue
+
             # Create initial list if needed
             if account_id not in output:
                 output[account_id] = []
@@ -401,7 +405,7 @@ def build_summary(target_period, compare_period, team_sage):
                 filtered[recipient]['missing_other_tag'] = missing_tags
     LOG.debug(filtered)
 
-    return filtered
+    return filtered, account_names
 
 
 def lambda_handler(event, context):
@@ -414,17 +418,24 @@ def lambda_handler(event, context):
     account totals.
     """
 
-    # Calculate the reporting periods for this run
+    # Calculate the reporting periods to send to cost explorer
     now = datetime.now()
     target_month, compare_month = report_periods(now)
+
+    # Name of the target period for the email subject
+    _dt = datetime.fromisoformat(target_month['Start'])
+    email_period = _dt.strftime("%B %Y")  # Month Year
 
     # Get Team Sage from Synapse
     team_sage = synapse.get_team_sage_members()
 
     # Build email summary
-    email_summary = build_summary(target_month, compare_month, team_sage)
+    email_summary, account_names = build_summary(target_month,
+                                                 compare_month,
+                                                 team_sage)
 
     # Create and send email reports from summary
     for email in email_summary:
-        html, text = ses.build_email_body(email_summary[email])
-        ses.send_report_email(email, html, text)
+        html, text = ses.build_email_body(email_summary[email],
+                                          account_names)
+        ses.send_report_email(email, html, text, email_period)
