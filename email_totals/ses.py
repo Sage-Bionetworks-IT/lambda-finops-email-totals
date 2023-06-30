@@ -69,6 +69,22 @@ def build_email_body(summary, account_names):
         else:
             return ""
 
+    def _build_paragraph(text, html=False):
+        output = ''
+
+        if html:
+            # Put the paragraph in an invisible table to wrap long lines;
+            # give the table a single row with two cells, put the text in
+            # the first cell and let the second cell fill any extra space
+            output += ("<table border='0' width='100%' "
+                       "style='border-collapse: collapse;'><tr>"
+                       f"<td width='600'>{text}</td><td></td>"
+                       "</tr></table>")
+        else:
+            output += text + '\n'
+
+        return output
+
     def _build_usage_table(usage, html=False):
         """
         Build paragraph about directly-tagged resources
@@ -86,20 +102,21 @@ def build_email_body(summary, account_names):
         output = ''
 
         if html:
-            output += ("<table border=1 style='border-collapse: collapse;'>"
+            output += ("<table border='1' padding='10' width='600' "
+                       "style='border-collapse: collapse; text-align: center;'>"
                        "<tr style='background-color: LightSteelBlue'>"
-                       "<th>Account Name</th><th>Account ID</th>"
-                       "<th>Your Total</th><th>Month-over-Month</th></tr>")
+                       "<th>Account Name (Account ID)</th>"
+                       "<th>Your Total</th><th>Month-over-Month Change</th></tr>")
             row_i = 0  # row index for coloring table rows
         else:
-            output += '\t'.join(['Account Name', 'Account ID',
-                                 'Total', 'Month-over-Month'])
+            output += '\t'.join(['Account Name (Account ID)',
+                                 'Total', 'Month-over-Month Change'])
 
         for account_id in usage:
             account_name = account_names[account_id]
 
-            # Round total to 2 decimal places
-            total = f"{usage[account_id]['total']:.2f}"
+            # Round dollar total to 2 decimal places
+            total = f"${usage[account_id]['total']:.2f}"
 
             change = ''
             if 'change' in usage[account_id]:
@@ -107,7 +124,7 @@ def build_email_body(summary, account_names):
                 change = f"{usage[account_id]['change']:.2%}"
 
             if html:
-                _td = (f"<td>{account_name}</td><td>{account_id}</td>"
+                _td = (f"<td>{account_name} ({account_id})</td>"
                        f"<td>{total}</td><td>{change}</td>")
 
                 _style = _table_row_style(row_i)
@@ -119,7 +136,7 @@ def build_email_body(summary, account_names):
                 output = '\t'.join(_td) + '\n'
 
         if html:
-            output += "</table>"
+            output += "</table><br/>"
 
         return output
 
@@ -140,12 +157,9 @@ def build_email_body(summary, account_names):
         output = ''
 
         descr = 'You are tagged as owning the following accounts:'
-        table = _build_usage_table(usage, html)
 
-        if html:
-            output += f"<p>{descr}</p>{table}"
-        else:
-            output += f"{descr}\n{table}"
+        output += _build_paragraph(descr, html)
+        output += _build_usage_table(usage, html)
 
         return output
 
@@ -167,12 +181,9 @@ def build_email_body(summary, account_names):
 
         descr = ('You are tagged as owning resources in the following '
                  'accounts: ')
-        table = _build_usage_table(usage, html)
 
-        if html:
-            output += f"<p>{descr}</p>{table}"
-        else:
-            output += f"{descr}\n{table}"
+        output += _build_paragraph(descr, html)
+        output += _build_usage_table(usage, html)
 
         return output
 
@@ -180,15 +191,15 @@ def build_email_body(summary, account_names):
         output = ''
 
         if html:
-            output += ("<table border=1 padding=3 width=550px "
-                       "style='border-collapse: collapse;'>"
+            output += ("<table border='1' padding='10' width='600' "
+                       "style='border-collapse: collapse; text-align: center;'>"
                        "<tr style='background-color: LightSteelBlue'>"
-                       "<th>Account Name</th><th>Account ID</th>"
-                       "<th>Resources Missing Tag</th></tr>")
+                       "<th>Account Name (Account ID)</th>"
+                       "<th>Resources Missing CostCenterOther Tags</th></tr>")
             row_i = 0  # row index for coloring table rows
         else:
-            output += '\t'.join(['Account Name', 'Account ID',
-                                 'Resources Missing Tags'])
+            output += '\t'.join(['Account Name (Account ID)',
+                                 'Resources Missing CostCenterOther Tags'])
 
         for account_id in missing:
             account_name = account_names[account_id]
@@ -197,7 +208,7 @@ def build_email_body(summary, account_names):
             untagged = json.dumps(missing[account_id])
 
             if html:
-                _td = (f"<td>{account_name}</td><td>{account_id}</td>"
+                _td = (f"<td>{account_name} ({account_id})</td>"
                        f"<td>{untagged}</td>")
 
                 _style = _table_row_style(row_i)
@@ -209,7 +220,7 @@ def build_email_body(summary, account_names):
                 output = '\t'.join(_td) + '\n'
 
         if html:
-            output += "</table>"
+            output += "</table><br/>"
 
         return output
 
@@ -228,17 +239,13 @@ def build_email_body(summary, account_names):
 
         output = ''
 
-        descr = ('Additionally, some of the above resources have a '
-                 '"CostCenter" tag value of "Other / 000001" but do not have '
-                 'a required "CostCenterOther" tag: ')
-        table = _build_tags_table(missing, html)
+        descr = ('Some of the above resources have a "CostCenter" tag value '
+                 'of "Other / 000001" but do not have a required '
+                 '"CostCenterOther" tag. If you need assistance adding the '
+                 'required tag, please contact Sage IT.')
 
-        if html:
-            output += f"<p>{descr}</p>{table}"
-        else:
-            output += f"{descr}\n{table}"
-
-        return output
+        output += _build_paragraph(descr, html)
+        output += _build_tags_table(missing, html)
 
         return output
 
@@ -246,8 +253,10 @@ def build_email_body(summary, account_names):
     intro = ('You are receiving this summary because you are tagged as '
              'the owner of AWS resources.')
 
-    html_body = f"<div width=600px><h3>{title}</h3><br/><p>{intro}</p>"
-    text_body = f"{title}\n\n{intro}\n"
+    html_body = f"<h3>{title}</h3>"
+    html_body += _build_paragraph(f"<p>{intro}</p>", True)
+
+    text_body = f"{title}\n{intro}\n"
 
     if 'resources' in summary:
         html_body += _build_resource_usage(summary['resources'], True)
@@ -266,7 +275,7 @@ def build_email_body(summary, account_names):
     docs_name = 'Using AWS Cost Explorer'
     docs_url = 'https://sagebionetworks.jira.com/wiki/spaces/IT/pages/2756935685/Using+AWS+Cost+Explorer'
 
-    html_body += f"<p>{docs_prose}: <a href='{docs_url}'>{docs_name}</a></p></div>"
+    html_body += _build_paragraph(f"{docs_prose}: <a href='{docs_url}'>{docs_name}</a>", True)
     text_body += f"\n{docs_prose}. See '{docs_name}' at: {docs_url}"
 
     LOG.debug(html_body)
