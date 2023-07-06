@@ -33,7 +33,8 @@ before emails will successfully send.
 
 #### SkipRecipients
 
-A skip list of email addresses so that recipients may opt out of notifications.
+A skip list of email addresses. Any recipient listed here will be skipped,
+useful for recipients who want to opt-out of notifications.
 
 #### RestrictRecipients
 
@@ -42,8 +43,8 @@ recipients. Useful for testing.
 
 #### ApprovedRecipients
 
-An allow list of recipient addresses, only used when `RestrictRecipients` is
-`True`. Useful for testing.
+An allow list of recipient addresses, any recipient not listed here will be
+skipped, only respected when `RestrictRecipients` is `True`. Useful for testing.
 
 #### MinimumValue
 
@@ -53,8 +54,9 @@ default $1.
 ### Triggering
 
 The lambda is configured to run on a schedule, by default at 10:30am UTC on the
-2nd of each month. Ad-hoc runs for testing can be triggered from the Lambda
-console page.
+2nd of each month. Ad-hoc runs for testing can be triggered with an empty test
+event from the
+[Lambda console page](https://docs.aws.amazon.com/lambda/latest/dg/testing-functions.html)
 
 ## Development
 
@@ -267,5 +269,4 @@ stack_tags:
   OwnerEmail: "it@sagebase.org"
 parameters:
   RestrictRecipients: "False"
-  ApprovedRecipients: "canary1@example.com,canary2@example.com"
 ```

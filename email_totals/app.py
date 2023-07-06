@@ -45,18 +45,25 @@ def get_team_sage_emails():
 def get_resource_totals(target_p, compare_p, minimum):
     """
     Get email cost information from cost explorer for both time periods
-    and generate a dictionary of the form:
+    and generate a multi-level dictionary. The top-level key will be the
+    email address of the resource owner, the first-level subkey will be the
+    literal string 'resources', the second-level subkey will be the account ID,
+    and the third-level subkeys will be the literal strings 'total', and
+    optionally 'change'; 'total' will map to a float representing the user's
+    resource total for this account, and if 'change' is present it will map to a
+    float representing percent change from the last month (1.0 is 100% growth).
+
+    Example:
     ```
     email1@example.com:
         resources:
             111122223333:
                 total: 10.0
-                change: 1.2
+                change: -0.1
     email2@example.com:
         resources:
             222233334444:
                 total: 2.1
-                change: 0.0
     ```
     """
 
@@ -71,7 +78,15 @@ def get_account_totals(target_p, compare_p, minimum):
     """
     Get account cost information from cost explorer for both time periods,
     and also account owner tags from organizations, then generate and return
-    a dictionary of the form:
+    a multi-level dictionary. The top-level key will be the email address of
+    the account owner, the first-level subkey will be the literal string
+    'accounts', the second-level subkey will be the account ID, and the third-
+    level subkeys will be the literal string 'total', and optionally 'change';
+    'total' will map to a float representing the account total, and if 'change'
+    is present it will map to a float representing percent change from the last
+    month (1.0 is 100% growth).
+
+    Example:
     ```
     email1@example.com:
         accounts:
@@ -96,7 +111,10 @@ def get_missing_other_tags(period, owner):
     """
     Query cost explorer for resource usage by the given resource owner,
     filtering for resources missing a required CostCenterOther tag,
-    and grouped by account id, then generate output of the form:
+    and grouped by account id, then generate a dictionary mapping an
+    account ID to a list of resource IDs.
+
+    Example:
     ```
     111122223333:
       - i-0abcdefg
@@ -116,7 +134,7 @@ def build_summary(target_period, compare_period, team_sage):
     Build a convenient data structure representing the data we want to
     include in each email.
 
-    The resources and accounts totals are separate subkeys because our
+    The resource and account totals are separate subkeys because our
     owner cost category in cost explorer doesn't include account-based rules.
 
     Example output
