@@ -44,7 +44,8 @@ recipients. Useful for testing.
 #### ApprovedRecipients
 
 An allow list of recipient addresses, any recipient not listed here will be
-skipped, only respected when `RestrictRecipients` is `True`. Useful for testing.
+skipped, only respected when `RestrictRecipients` is `True`. Does not override
+`SkipRecipients`. Useful for testing.
 
 #### MinimumValue
 

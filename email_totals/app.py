@@ -131,11 +131,21 @@ def get_missing_other_tags(period, owner):
 
 def build_summary(target_period, compare_period, team_sage):
     """
-    Build a convenient data structure representing the data we want to
-    include in each email.
+    Build a convenient data structure representing the recipients and the data
+    we want to include in each email.
 
-    The resource and account totals are separate subkeys because our
-    owner cost category in cost explorer doesn't include account-based rules.
+    The 'resources' subkey will have per-account resource totals for the owner,
+    and percent change from the previous month if applicable.
+
+    The 'missing_other_tag' subkey will list owner resources that are missing a
+    required 'CostCenterOther' tag.
+
+    Since IT-2369 is blocked, the owner category does not include accounts
+    tagged with an account owner. As a workaround, we add an 'accounts' subkey
+    with account totals for owned accounts, and build an additional email
+    section from it. If IT-2369 is ever implemented, then the owned accounts
+    would be included in the 'resources' subkey and the 'accounts' subkey can
+    be removed.
 
     Example output
     ```
