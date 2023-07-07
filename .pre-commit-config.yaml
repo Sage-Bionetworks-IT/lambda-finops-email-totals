@@ -23,3 +23,12 @@ repos:
     rev: v1.3.1
     hooks:
     -   id: remove-tabs
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.7.16  # Use the ref you want to point at
+  hooks:
+  - id: mdformat
+    # Optionally add plugins
+    additional_dependencies:
+    - mdformat-gfm  # github-flavored markdown
+    files: README.md
+    args: [--wrap=80]
