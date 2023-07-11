@@ -1,9 +1,8 @@
-from email_totals import ce, org, ses
-
 import logging
 import os
 from datetime import datetime
 
+from email_totals import ce, org, synapse, ses
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -27,19 +26,6 @@ def report_periods(today):
     LOG.info(f"Compare month: {compare_month}")
 
     return target_month, compare_month
-
-
-def get_team_sage_emails():
-    """
-    Get a list of Team Sage emails from Synapse
-    """
-
-    team_sage = []
-
-    # TODO: interact with Synapse to get the members of Team Sage.
-    # For now return an empty list, which will treat all synapse users as external
-
-    return team_sage
 
 
 def get_resource_totals(target_p, compare_p, minimum):
@@ -107,6 +93,7 @@ def get_account_totals(target_p, compare_p, minimum):
 
     return output
 
+
 def get_missing_other_tags(period, owner):
     """
     Query cost explorer for resource usage by the given resource owner,
@@ -169,36 +156,36 @@ def build_summary(target_period, compare_period, team_sage):
     ```
     """
 
-    summary = {}
+    data = {}
     min_value = float(os.environ['MINIMUM'])
 
     # Generate 'resources' subkeys and merge them in
     resources = get_resource_totals(target_period, compare_period, min_value)
     for owner in resources:
-        if owner not in summary:
-            summary[owner] = {}
-        summary[owner]['resources'] = resources[owner]['resources']
+        if owner not in data:
+            data[owner] = {}
+        data[owner]['resources'] = resources[owner]['resources']
 
-    LOG.debug(summary)
+    LOG.debug(data)
 
     # Generate 'accounts' subkeys and merge them in
     accounts = get_account_totals(target_period, compare_period, min_value)
     for owner in accounts:
-        if owner not in summary:
-            summary[owner] = {}
-        summary[owner]['accounts'] = accounts[owner]['accounts']
+        if owner not in data:
+            data[owner] = {}
+        data[owner]['accounts'] = accounts[owner]['accounts']
 
-    LOG.debug(summary)
+    LOG.debug(data)
 
     # Filter valid recipients and amend missing tag info
     filtered = {}
-    for recipient in summary:
+    for recipient in data:
         if ses.valid_recipient(recipient, team_sage):
-            filtered[recipient] = summary[recipient]
+            filtered[recipient] = data[recipient]
 
             # Amend summary with missing CostCenterOther tags
             # Do this after filtering to minimize CE calls
-            missing_tags = get_missing_other_tags(target_period, recipient)
+            missing_tags = get_missing_other_tags(recipient)
             if missing_tags:
                 filtered[recipient]['missing_other_tag'] = missing_tags
 
@@ -221,7 +208,7 @@ def lambda_handler(event, context):
     target_month, compare_month = report_periods(now)
 
     # Get Team Sage from Synapse
-    team_sage = get_team_sage_emails()
+    team_sage = synapse.get_team_sage_members()
 
     # Build email summary
     email_summary = build_summary(target_month, compare_month, team_sage)

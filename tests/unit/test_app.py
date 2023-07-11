@@ -1,8 +1,6 @@
-from email_totals import app
-
 import os
 
-import pytest
+from email_totals import app
 
 
 def test_build_summary(mocker,
@@ -10,16 +8,14 @@ def test_build_summary(mocker,
                        mock_app_account_totals,
                        mock_app_missing_tags,
                        mock_app_build_summary):
-
     def _missing_tags_side_effect():
         yield mock_app_missing_tags
 
         while True:
             yield {}
 
-
     env_vars = {
-            'MINIMUM': '1.1',
+        'MINIMUM': '1.1',
     }
     mocker.patch.dict(os.environ, env_vars)
 

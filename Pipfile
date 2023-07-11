@@ -9,7 +9,7 @@ pytest-mock = "~=3.8"
 boto3 = "~=1.24"
 
 [packages]
-crhelper = "~=2.0"
+synapseclient = "~=2.0"
 
 [requires]
 python_version = "3.9"

@@ -14,10 +14,12 @@ users who have been tagged as resource owners.
 | ------------------ | --------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
 | ScheduleExpression | EventBridge Schedule Expression         | `cron(30 10 2 * ? *)`                   | Schedule for running the lambda                                                      |
 | SenderEmail        | Any email address                       | `cloud-cost-notifications@sagebase.org` | Value to use for the `From` email field                                              |
-| RestrictRecipients | `True` or `False`                       | `False`                                 | Only send emails to recipients listed in `ApprovedRecipients`                        |
-| ApprovedRecipients | Comma-delimited list of email addresses | `''`                                    | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
 | SkipRecipients     | Comma-delimited list of email addresses | `''`                                    | Never send emails to recipients in this list (recipient opt-out)                     |
 | MinimumValue       | Floating-point number                   | `1.0`                                   | Emails will not be sent for totals less than this amount                             |
+| SynapseDomain      | Valid domain, prepended with `@`        | `@synapse.org`                          | Email domain used by Synapse                                                         |
+| SynapseTeamId      | Synapse Team Id (numeric string)        | `273957`                                | Only send emails to synapse users if they are a member of this Team                  |
+| RestrictRecipients | `True` or `False`                       | `False`                                 | If `True` only send emails to recipients listed in `ApprovedRecipients`              |
+| ApprovedRecipients | Comma-delimited list of email addresses | `''`                                    | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
 
 #### ScheduleExpression
 
@@ -36,6 +38,21 @@ before emails will successfully send.
 A skip list of email addresses. Any recipient listed here will be skipped,
 useful for recipients who want to opt-out of notifications.
 
+#### MinimumValue
+
+Don't send an email if the reported monthly total is less than this amount, by
+default $1.
+
+#### SynapseDomain
+
+The email domain used by Synapse. If an email recipient is at this domain, the
+recipient must also be a member of the listed Synapse team.
+
+#### SynapseTeamId
+
+Only send notifications to Synapse users if they are also a member of this team.
+This only affects email addresses matching SynapseDomain.
+
 #### RestrictRecipients
 
 Boolean value to toggle enforcing an `ApprovedRecipients` allow list of email
@@ -46,11 +63,6 @@ recipients. Useful for testing.
 An allow list of recipient addresses, any recipient not listed here will be
 skipped, only respected when `RestrictRecipients` is `True`. Does not override
 `SkipRecipients`. Useful for testing.
-
-#### MinimumValue
-
-Don't send an email if the reported monthly total is less than this amount, by
-default $1.
 
 ### Triggering
 

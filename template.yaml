@@ -39,6 +39,16 @@ Parameters:
     Description: Comma-separated list of approved email recipients
     Default: ''
 
+  SynapseTeamId:
+    Type: String
+    Description: Synapse ID for Team Sage
+    Default: '273957'
+
+  SynapseTeamDomain:
+    Type: String
+    Description: Email domain used by Synapse
+    Default: '@synapse.org'
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -92,6 +102,8 @@ Resources:
           APPROVED: !Ref ApprovedRecipients
           SKIPLIST: !Ref SkipRecipients
           MINIMUM: !Ref MinimumValue
+          SYNAPSE_TEAM_ID: !Ref SynapseTeamId
+          SYNAPSE_TEAM_DOMAIN: !Ref SynapseTeamDomain
       Events:
         ScheduledEventTrigger:
           Type: Schedule
