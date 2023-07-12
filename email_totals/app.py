@@ -17,41 +17,41 @@ def report_periods(today):
 
     The Start date is inclusive, and the End date is exclusive
     """
-    target_month = {}
-    compare_month = {}
+    target_period = {}
+    compare_period = {}
 
     # Special-case the two cases where we cross year boundaries
     if today.month == 1:
         # in Jan, look at Dec and Nov of last year
-        target_month['Start'] = f'{today.year - 1}-12-01'
-        target_month['End'] = f'{today.year}-01-01'
+        target_period['Start'] = f'{today.year - 1}-12-01'
+        target_period['End'] = f'{today.year}-01-01'
 
-        compare_month['Start'] = f'{today.year - 1}-11-01'
-        compare_month['End'] = f'{today.year - 1}-12-01'
+        compare_period['Start'] = f'{today.year - 1}-11-01'
+        compare_period['End'] = f'{today.year - 1}-12-01'
 
     elif today.month == 2:
         # in Feb, look at Jan of this year and Dec of last year
-        target_month['Start'] = f'{today.year}-01-01'
-        target_month['End'] = f'{today.year}-02-01'
+        target_period['Start'] = f'{today.year}-01-01'
+        target_period['End'] = f'{today.year}-02-01'
 
-        compare_month['Start'] = f'{today.year - 1}-12-01'
-        compare_month['End'] = f'{today.year}-01-01'
+        compare_period['Start'] = f'{today.year - 1}-12-01'
+        compare_period['End'] = f'{today.year}-01-01'
 
     else:
         # no year boundary, look at the previous two months
-        target_month['Start'] = f'{today.year}-{(today.month - 1):02}-01'
-        target_month['End'] = f'{today.year}-{today.month:02}-01'
+        target_period['Start'] = f'{today.year}-{(today.month - 1):02}-01'
+        target_period['End'] = f'{today.year}-{today.month:02}-01'
 
-        compare_month['Start'] = f'{today.year}-{(today.month - 2):02}-01'
-        compare_month['End'] = f'{today.year}-{(today.month - 1):02}-01'
+        compare_period['Start'] = f'{today.year}-{(today.month - 2):02}-01'
+        compare_period['End'] = f'{today.year}-{(today.month - 1):02}-01'
 
-    LOG.info(f"Target month: {target_month}")
-    LOG.info(f"Compare month: {compare_month}")
+    LOG.info(f"Target month: {target_period}")
+    LOG.info(f"Compare month: {compare_period}")
 
-    return target_month, compare_month
+    return target_period, compare_period
 
 
-def get_resource_totals(target_p, compare_p, minimum):
+def get_resource_totals(target_period, compare_period, minimum_total):
     """
     Get email cost information from cost explorer for both time periods
     and generate a multi-level dictionary. The top-level key will be the
@@ -100,8 +100,8 @@ def get_resource_totals(target_p, compare_p, minimum):
                 account_id = group['Keys'][1]
 
                 # Skip insignificant totals
-                if amount < minimum:
-                    LOG.info(f"Skipping total less than ${minimum} for "
+                if amount < minimum_total:
+                    LOG.info(f"Skipping total less than ${minimum_total} for "
                              f"{email}: {account_id} ${amount}")
                     continue
 
@@ -121,17 +121,17 @@ def get_resource_totals(target_p, compare_p, minimum):
         return resources
 
     # First generate data to compare against
-    compare_data = ce.get_ce_email_costs(compare_p)
+    compare_data = ce.get_ce_email_costs(compare_period)
     compare_dict = _build_dict(compare_data['ResultsByTime'])
 
     # Then generate data our target data, passing in compare data
-    target_data = ce.get_ce_email_costs(target_p)
+    target_data = ce.get_ce_email_costs(target_period)
     target_dict = _build_dict(target_data['ResultsByTime'], compare_dict)
 
     return target_dict
 
 
-def get_account_totals(target_p, compare_p, minimum):
+def get_account_totals(target_period, compare_period, minimum_total):
     """
     Get account cost information from cost explorer for both time periods,
     and also account owner tags from organizations, then generate and return
@@ -168,7 +168,10 @@ def get_account_totals(target_p, compare_p, minimum):
 
     def _build_result_dict(results_by_time):
         """
-        Transform the results from cost explorer into a dictionary of the form:
+        Transform the account results from cost explorer into a dictionary
+        mapping account IDs to account totals for easy lookup.
+
+        Example:
         ```
         111122223333: 100.0
         222233334444: 10
@@ -196,7 +199,32 @@ def get_account_totals(target_p, compare_p, minimum):
 
     def _build_attr_dict(attributes):
         """
-        Transform DimensionValueAttributes to a useful dict
+        Transform DimensionValueAttributes into a simple dictionary so that we
+        can easily look up a description for an arbitrary value.
+
+        Original structure:
+        ```
+        [
+          {
+            'Value': value1
+            'Attributes': {
+              'description': description1
+            }
+          },
+          {
+            'Value': value2
+            'Attributes': {
+              'description': description2
+            }
+          }
+        ]
+        ```
+
+        Transformed structure:
+        ```
+        value1: description1
+        value2: description2
+        ```
         """
         attr_dict = {}
 
@@ -209,10 +237,10 @@ def get_account_totals(target_p, compare_p, minimum):
 
     output = {}
 
-    compare_ce_data = ce.get_ce_account_costs(compare_p)
+    compare_ce_data = ce.get_ce_account_costs(compare_period)
     compare_dict = _build_result_dict(compare_ce_data['ResultsByTime'])
 
-    target_ce_data = ce.get_ce_account_costs(target_p)
+    target_ce_data = ce.get_ce_account_costs(target_period)
     target_dict = _build_result_dict(target_ce_data['ResultsByTime'])
 
     account_names = _build_attr_dict(target_ce_data['DimensionValueAttributes'])
@@ -231,8 +259,8 @@ def get_account_totals(target_p, compare_p, minimum):
             target_total = target_dict[account]
 
             # Skip insignificant totals
-            if target_total < minimum:
-                LOG.info(f"Skipping total less than ${minimum} for {owner}: "
+            if target_total < minimum_total:
+                LOG.info(f"Skipping total less than ${minimum_total} for {owner}: "
                          f"{account} ${target_total}")
                 continue
 
@@ -292,6 +320,14 @@ def build_summary(target_period, compare_period, team_sage):
     """
     Build a convenient data structure representing the recipients and the data
     we want to include in each email.
+
+    The first parameter is a TimePeriod dict representing the month we are
+    reporting on. The second parameter is a TimePeriod dict representing the
+    month prior to the target month, for calculating percent change. The third
+    parameter is a list of valid synapse users for receiving notifications.
+
+    The output will include 3 subkeys under each recipient: 'resources',
+    'missing_other_tag', and 'accounts'.
 
     The 'resources' subkey will have per-account resource totals for the owner,
     and percent change from the previous month if applicable.
