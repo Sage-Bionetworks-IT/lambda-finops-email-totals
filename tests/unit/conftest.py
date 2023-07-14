@@ -37,7 +37,8 @@ account2_total = 0.01
 account3_user3_total1 = 100.0
 account3_user3_total2 = 100
 account3_user3_change = 0
-account3_user3_missing = ['i-0hijklmnop', 'i-1abcdefg']
+account3_user3_missing_ce = ['i-0hijklmnop', 'NoResourceId']
+account3_user3_missing_app = ['i-0hijklmnop']
 
 account4_user4_total = 10
 
@@ -110,7 +111,7 @@ def mock_app_missing_tags_user2():
 @pytest.fixture()
 def mock_app_missing_tags_user3():
     response = {
-        account3_id: account3_user3_missing
+        account3_id: account3_user3_missing_app
     }
     return response
 
@@ -140,7 +141,7 @@ def mock_app_build_summary():
                               'change': account3_user3_change}
             },
             'missing_other_tag': {
-                account3_id: account3_user3_missing
+                account3_id: account3_user3_missing_app
             }
         },
         user4: {
@@ -309,7 +310,7 @@ def mock_ce_missing_tags_user2():
 @pytest.fixture()
 def mock_ce_missing_tags_user3():
     return mock_ce_missing_tag_response(account3_id,
-                                        account3_user3_missing)
+                                        account3_user3_missing_ce)
 
 
 @pytest.fixture()
