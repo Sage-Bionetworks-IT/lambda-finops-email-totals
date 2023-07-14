@@ -49,6 +49,12 @@ Parameters:
     Description: Email domain used by Synapse
     Default: '@synapse.org'
 
+  AdminEmail:
+    Type: String
+    Description: Email recipient for admin notifications (e.g. uncategorized costs)
+    Default: '"Cloud Cost Notifications" <cloud-cost-notifications@sagebase.org>'
+
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -97,6 +103,7 @@ Resources:
       Role: !GetAtt MonthlyServicesUsageLambdaRole.Arn
       Environment:
         Variables:
+          ADMIN_EMAIL: !Ref AdminEmail
           SENDER: !Ref SenderEmail
           RESTRICT: !Ref RestrictRecipients
           APPROVED: !Ref ApprovedRecipients

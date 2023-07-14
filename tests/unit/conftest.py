@@ -13,6 +13,7 @@ user1 = 'user1' + ses.synapse_email
 user2 = 'user2' + ses.synapse_email
 user3 = 'user3' + ses.sagebio_email
 user4 = 'user4' + ses.sagebase_email
+uncategorized = ''
 
 account1_id = '111122223333'
 account2_id = '222233334444'
@@ -31,7 +32,9 @@ account1_user1_change = 0.5
 account1_user2_total = 32.10
 account1_user2_missing = ['i-0abcdefg', 'i-1hijklmnop']
 
+account1_unowned_total = 999
 account1_total = 9999
+
 account2_total = 0.01
 
 account3_user3_total1 = 100.0
@@ -61,6 +64,14 @@ def mock_app_resource_dict():
                 account1_id: {
                     'total': account1_user2_total,
                 }
+            }
+        },
+        uncategorized: {
+            'resources': {
+                account1_id: {
+                    'total': account1_unowned_total,
+                    'change': 0.0
+                },
             }
         }
     }
@@ -117,7 +128,18 @@ def mock_app_missing_tags_user3():
 
 
 @pytest.fixture()
-def mock_app_build_summary():
+def mock_app_unowned():
+    response = {
+        account1_id: {
+            'total': account1_unowned_total,
+            'change': 0.0
+        }
+    }
+    return response
+
+
+@pytest.fixture()
+def mock_app_per_user():
     response = {
         user1: {
             'resources': {
@@ -150,6 +172,18 @@ def mock_app_build_summary():
             },
 
         }
+    }
+    return response
+
+
+@pytest.fixture()
+def mock_app_build_summary(mock_app_account_names,
+                           mock_app_per_user,
+                           mock_app_unowned):
+    response = {
+        'account_names': mock_app_account_names,
+        'per_user_summary': mock_app_per_user,
+        'unowned': mock_app_unowned
     }
     return response
 
@@ -267,6 +301,7 @@ def mock_ce_email_target_data():
     target_totals = {
         user1: str(account1_user1_total1),
         user2: str(account1_user2_total),
+        uncategorized: str(account1_unowned_total),
     }
     return mock_ce_email_usage(target_totals)
 
@@ -275,6 +310,7 @@ def mock_ce_email_target_data():
 def mock_ce_email_compare_data():
     compare_totals = {
         user1: str(account1_user1_total2),
+        uncategorized: str(account1_unowned_total),
     }
     return mock_ce_email_usage(compare_totals)
 

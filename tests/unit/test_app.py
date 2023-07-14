@@ -143,6 +143,7 @@ def test_build_summary(mocker,
                        mock_app_account_names,
                        mock_app_missing_tags_user2,
                        mock_app_missing_tags_user3,
+                       mock_app_unowned,
                        mock_app_build_summary,
                        mock_ce_period,
                        mock_team_sage,
@@ -176,8 +177,8 @@ def test_build_summary(mocker,
     mocker.patch('email_totals.ses.valid_recipient',
                  return_value=True)
 
-    found_summary, found_names = app.build_summary(mock_ce_period,
-                                                   mock_ce_period,
-                                                   mock_team_sage)
+    found_summary = app.build_summary(mock_ce_period,
+                                      mock_ce_period,
+                                      mock_team_sage)
+
     assert found_summary == mock_app_build_summary
-    assert found_names == mock_app_account_names
