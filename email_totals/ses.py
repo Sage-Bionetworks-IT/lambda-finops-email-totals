@@ -4,6 +4,7 @@ import os
 import time
 
 import boto3
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError
 
 LOG = logging.getLogger(__name__)
@@ -13,7 +14,15 @@ sagebase_email = '@sagebase.org'
 sagebio_email = '@sagebionetworks.org'
 synapse_email = '@synapse.org'
 
-ses_client = boto3.client('ses')
+# Use standard mode in order to retry on RequestLimitExceeded
+# and increase the default number of retries to 10
+ses_config = BotoConfig(
+    retries = {
+        'mode': 'standard',  # default mode is legacy
+        'max_attempts': 10,  # default for standard mode is 3
+    }
+)
+ses_client = boto3.client('ses', config=ses_config)
 
 
 def valid_recipient(email, team_sage):
