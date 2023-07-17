@@ -11,6 +11,7 @@ def test_send_email(mocker,
     recipient = 'user@synapse.org'
     text_body = 'test'
     html_body = '<html>test</html>'
+    period = 'Test Month'
 
     env_vars = {
         'SENDER': 'test@example.com',
@@ -20,10 +21,38 @@ def test_send_email(mocker,
     with Stubber(ses.ses_client) as _stub:
         _stub.add_response('send_email', mock_ses_response)
 
-        ses.send_report_email(recipient, html_body, text_body)
+        ses.send_report_email(recipient, html_body, text_body, period)
 
         # assert that the client function was called
         _stub.assert_no_pending_responses()
+
+
+def test_email_body(mock_app_account_names,
+                    mock_app_build_summary,
+                    mock_user1,
+                    mock_user2,
+                    mock_user3,
+                    mock_user4):
+    # assert no exceptions are raised
+    html, text = ses.build_email_body(mock_app_build_summary[mock_user1],
+                                      mock_app_account_names)
+    print(html)
+    print(text)
+
+    html, text = ses.build_email_body(mock_app_build_summary[mock_user2],
+                                      mock_app_account_names)
+    print(html)
+    print(text)
+
+    html, text = ses.build_email_body(mock_app_build_summary[mock_user3],
+                                      mock_app_account_names)
+    print(html)
+    print(text)
+
+    html, text = ses.build_email_body(mock_app_build_summary[mock_user4],
+                                      mock_app_account_names)
+    print(html)
+    print(text)
 
 
 @pytest.mark.parametrize(
