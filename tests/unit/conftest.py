@@ -66,6 +66,13 @@ def mock_app_resource_dict():
                 }
             }
         },
+        user4: {
+            'resources': {
+                account4_id: {
+                    'total': account4_user4_total,
+                }
+            }
+        },
         uncategorized: {
             'resources': {
                 account1_id: {
@@ -167,6 +174,9 @@ def mock_app_per_user():
             }
         },
         user4: {
+            'resources': {
+                account4_id: {'total': account4_user4_total}
+            },
             'accounts': {
                 account4_id: {'total': account4_user4_total}
             },
@@ -265,15 +275,15 @@ def mock_ce_account_compare_data():
 def mock_ce_email_usage(user_totals):
     groups = []
 
-    for user in user_totals:
+    for user, account_id, amount in user_totals:
         group = {
             'Keys': [
                 f"Owner Email${user}",
-                account1_id
+                account_id
             ],
             'Metrics': {
                 'UnblendedCost': {
-                    'Amount': user_totals[user]
+                    'Amount': amount
                 }
             }
         }
@@ -299,9 +309,10 @@ def mock_ce_email_usage(user_totals):
 @pytest.fixture()
 def mock_ce_email_target_data():
     target_totals = {
-        user1: str(account1_user1_total1),
-        user2: str(account1_user2_total),
-        uncategorized: str(account1_unowned_total),
+        (user1, account1_id, str(account1_user1_total1)),
+        (user2, account1_id, str(account1_user2_total)),
+        (user4, account4_id, str(account4_user4_total)),
+        (uncategorized, account1_id, str(account1_unowned_total)),
     }
     return mock_ce_email_usage(target_totals)
 
@@ -309,8 +320,8 @@ def mock_ce_email_target_data():
 @pytest.fixture()
 def mock_ce_email_compare_data():
     compare_totals = {
-        user1: str(account1_user1_total2),
-        uncategorized: str(account1_unowned_total),
+        (user1, account1_id, str(account1_user1_total2)),
+        (uncategorized, account1_id, str(account1_unowned_total)),
     }
     return mock_ce_email_usage(compare_totals)
 

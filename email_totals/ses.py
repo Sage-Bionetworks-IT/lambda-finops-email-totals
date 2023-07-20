@@ -213,13 +213,14 @@ def build_user_email_body(summary, account_names):
         descr = 'You are tagged as owning the following accounts:'
 
         output += build_paragraph(descr, html)
-        output += build_usage_table(usage, account_names, html=html)
+        output += build_usage_table(usage, account_names, total='Account Total', html=html)
 
         return output
 
-    def _build_resource_usage(usage, html=False):
+    def _build_resource_usage(resource_usage, account_usage=None, html=False):
         """
-        Build paragraph about directly-tagged resources
+        Build paragraph about directly-tagged resources, omitting any resources
+        that are in accounts owned by the user.
 
         Example usage block:
         ```
@@ -236,8 +237,14 @@ def build_user_email_body(summary, account_names):
         descr = ('You are tagged as owning resources in the following '
                  'accounts: ')
 
+        # Don't report the same account twice
+        if account_usage is not None:
+            for account_id in account_usage:
+                if account_id in resource_usage:
+                    del resource_usage[account_id]
+
         output += build_paragraph(descr, html)
-        output += build_usage_table(usage, account_names, html=html)
+        output += build_usage_table(resource_usage, account_names, html=html)
 
         return output
 
@@ -276,8 +283,18 @@ def build_user_email_body(summary, account_names):
     text_body = f"{title}\n{intro}\n"
 
     if 'resources' in summary:
-        html_body += _build_resource_usage(summary['resources'], True)
-        text_body += _build_resource_usage(summary['resources'], False)
+        if 'accounts' in summary:
+            html_body += _build_resource_usage(summary['resources'],
+                                               summary['accounts'],
+                                               html=True)
+            text_body += _build_resource_usage(summary['resources'],
+                                               summary['accounts'],
+                                               html=False)
+        else:
+            html_body += _build_resource_usage(summary['resources'],
+                                               html=True)
+            text_body += _build_resource_usage(summary['resources'],
+                                               html=False)
 
     if 'accounts' in summary:
         html_body += _build_accounts_usage(summary['accounts'], True)
