@@ -13,6 +13,7 @@ users who have been tagged as resource owners.
 | Parameter Name     | Allowed Values                          | Default Value                           | Description                                                                          |
 | ------------------ | --------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
 | ScheduleExpression | EventBridge Schedule Expression         | `cron(30 10 2 * ? *)`                   | Schedule for running the lambda                                                      |
+| AdminEmail         | Any email address                       | `cloud-cost-notifications@sagebase.org` | Send a report on unowned costs to this address                                       |
 | SenderEmail        | Any email address                       | `cloud-cost-notifications@sagebase.org` | Value to use for the `From` email field                                              |
 | SkipRecipients     | Comma-delimited list of email addresses | `''`                                    | Never send emails to recipients in this list (recipient opt-out)                     |
 | MinimumValue       | Floating-point number                   | `1.0`                                   | Emails will not be sent for totals less than this amount                             |
@@ -26,6 +27,11 @@ users who have been tagged as resource owners.
 [EventBridge schedule expression](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchevents-expressions.html)
 describing how often to run the lambda. By default it runs at 10:30am UTC on the
 2nd of each month.
+
+#### AdminEmail
+
+An administrative report summarizing unowned costs per account will be sent to
+this address.
 
 #### SenderEmail
 
