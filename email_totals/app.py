@@ -61,6 +61,8 @@ def get_resource_totals(target_period, compare_period, minimum_total):
     optionally 'change'; 'total' will map to a float representing the user's
     resource total for this account, and if 'change' is present it will map to a
     float representing percent change from the last month (1.0 is 100% growth).
+    As a special case, a top-level key equal to the empty string will contain
+    data for resources with no owner.
 
     Example:
     ```
@@ -392,23 +394,23 @@ def build_summary(target_period, compare_period, team_sage):
     data = {}
     min_value = float(os.environ['MINIMUM'])
 
-    # Generate 'resources' subkeys
-    resources = get_resource_totals(target_period, compare_period, min_value)
-    LOG.debug(f"Resource data: {resources}")
+    # Generate 'resources' subkeys under 'per_user_summary'
+    resources_by_owner = get_resource_totals(target_period, compare_period, min_value)
+    LOG.debug(f"Resource data: {resources_by_owner}")
 
     # Unowned resource costs will be associated with an empty string owner,
     # use pop() to remove the unowned data from the dictionary.
     # While IT-2369 is blocked the data will also include account totals for
     # accounts tagged with an owner, remove them as they are discovered.
     unowned = {}
-    if '' in resources:
-        unowned = resources.pop('')['resources']
+    if '' in resources_by_owner:
+        unowned = resources_by_owner.pop('')['resources']
 
     # Merge in the categorized resource data
-    for owner in resources:
+    for owner in resources_by_owner:
         if owner not in data:
             data[owner] = {}
-        data[owner]['resources'] = resources[owner]['resources']
+        data[owner]['resources'] = resources_by_owner[owner]['resources']
 
     # Generate 'accounts' subkeys
     accounts_dict, account_names = get_account_totals(target_period,
