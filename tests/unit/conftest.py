@@ -77,8 +77,12 @@ def mock_app_resource_dict():
             'resources': {
                 account1_id: {
                     'total': account1_unowned_total,
-                    'change': 0.0
+                    'change': 0.0,
                 },
+                account3_id: {
+                    'total': account3_user3_total1,
+                    'change': account3_user3_change,
+                }
             }
         }
     }
@@ -313,6 +317,8 @@ def mock_ce_email_target_data():
         (user2, account1_id, str(account1_user2_total)),
         (user4, account4_id, str(account4_user4_total)),
         (uncategorized, account1_id, str(account1_unowned_total)),
+        (uncategorized, account3_id, str(account3_user3_total1)),
+
     }
     return mock_ce_email_usage(target_totals)
 
@@ -322,6 +328,7 @@ def mock_ce_email_compare_data():
     compare_totals = {
         (user1, account1_id, str(account1_user1_total2)),
         (uncategorized, account1_id, str(account1_unowned_total)),
+        (uncategorized, account3_id, str(account3_user3_total2)),
     }
     return mock_ce_email_usage(compare_totals)
 
