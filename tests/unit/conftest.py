@@ -314,7 +314,8 @@ def mock_ce_email_usage(user_totals):
 def mock_ce_email_target_data():
     target_totals = {
         (user1, account1_id, str(account1_user1_total1)),
-        (user2, account1_id, str(account1_user2_total)),
+        (user2, account1_id, str(account1_user2_total - 5)),
+        (user2.upper(), account1_id, "5.0"),
         (user4, account4_id, str(account4_user4_total)),
         (uncategorized, account1_id, str(account1_unowned_total)),
         (uncategorized, account3_id, str(account3_user3_total1)),
