@@ -97,7 +97,9 @@ def get_resource_totals(target_period, compare_period, minimum_total):
                 # The category key has the format "<category name>$<category value>"
                 # so everything after the first '$' will be the email address
                 # A special case of "<category name>$" is used for uncategorized costs
-                email = group['Keys'][0].split('$', maxsplit=1)[1]
+                # giving us an empty-string email for costs with no owner
+                # Downcase all emails to detect case-insensitive duplicates.
+                email = group['Keys'][0].split('$', maxsplit=1)[1].lower()
 
                 account_id = group['Keys'][1]
 
@@ -107,10 +109,17 @@ def get_resource_totals(target_period, compare_period, minimum_total):
                              f"{email}: {account_id} ${amount}")
                     continue
 
-                # Add account resource total for resource owner
+                # Add 'resources' subkey if this is the first account we're
+                # processing for this email
                 if email not in resources:
                     resources[email] = {'resources': {}}
-                resources[email]['resources'][account_id] = {'total': amount}
+
+                # If this account is already listed, the email is a duplicate
+                # this can happen if it is tagged with different casing.
+                if account_id in resources[email]['resources']:
+                    resources[email]['resources'][account_id]['total'] += amount
+                else:
+                    resources[email]['resources'][account_id] = {'total': amount}
 
                 # If we have a compare dict, calculate a percent change
                 if compare and email in compare:
