@@ -13,6 +13,7 @@ user1 = 'user1' + ses.synapse_email
 user2 = 'user2' + ses.synapse_email
 user3 = 'user3' + ses.sagebio_email
 user4 = 'user4' + ses.sagebase_email
+uncategorized = ''
 
 account1_id = '111122223333'
 account2_id = '222233334444'
@@ -31,7 +32,9 @@ account1_user1_change = 0.5
 account1_user2_total = 32.10
 account1_user2_missing = ['i-0abcdefg', 'i-1hijklmnop']
 
+account1_unowned_total = 999
 account1_total = 9999
+
 account2_total = 0.01
 
 account3_user3_total1 = 100.0
@@ -60,6 +63,25 @@ def mock_app_resource_dict():
             'resources': {
                 account1_id: {
                     'total': account1_user2_total,
+                }
+            }
+        },
+        user4: {
+            'resources': {
+                account4_id: {
+                    'total': account4_user4_total,
+                }
+            }
+        },
+        uncategorized: {
+            'resources': {
+                account1_id: {
+                    'total': account1_unowned_total,
+                    'change': 0.0,
+                },
+                account3_id: {
+                    'total': account3_user3_total1,
+                    'change': account3_user3_change,
                 }
             }
         }
@@ -117,7 +139,18 @@ def mock_app_missing_tags_user3():
 
 
 @pytest.fixture()
-def mock_app_build_summary():
+def mock_app_unowned():
+    response = {
+        account1_id: {
+            'total': account1_unowned_total,
+            'change': 0.0
+        }
+    }
+    return response
+
+
+@pytest.fixture()
+def mock_app_per_user():
     response = {
         user1: {
             'resources': {
@@ -145,11 +178,26 @@ def mock_app_build_summary():
             }
         },
         user4: {
+            'resources': {
+                account4_id: {'total': account4_user4_total}
+            },
             'accounts': {
                 account4_id: {'total': account4_user4_total}
             },
 
         }
+    }
+    return response
+
+
+@pytest.fixture()
+def mock_app_build_summary(mock_app_account_names,
+                           mock_app_per_user,
+                           mock_app_unowned):
+    response = {
+        'account_names': mock_app_account_names,
+        'per_user_summary': mock_app_per_user,
+        'unowned': mock_app_unowned
     }
     return response
 
@@ -231,15 +279,15 @@ def mock_ce_account_compare_data():
 def mock_ce_email_usage(user_totals):
     groups = []
 
-    for user in user_totals:
+    for user, account_id, amount in user_totals:
         group = {
             'Keys': [
                 f"Owner Email${user}",
-                account1_id
+                account_id
             ],
             'Metrics': {
                 'UnblendedCost': {
-                    'Amount': user_totals[user]
+                    'Amount': amount
                 }
             }
         }
@@ -265,8 +313,12 @@ def mock_ce_email_usage(user_totals):
 @pytest.fixture()
 def mock_ce_email_target_data():
     target_totals = {
-        user1: str(account1_user1_total1),
-        user2: str(account1_user2_total),
+        (user1, account1_id, str(account1_user1_total1)),
+        (user2, account1_id, str(account1_user2_total)),
+        (user4, account4_id, str(account4_user4_total)),
+        (uncategorized, account1_id, str(account1_unowned_total)),
+        (uncategorized, account3_id, str(account3_user3_total1)),
+
     }
     return mock_ce_email_usage(target_totals)
 
@@ -274,7 +326,9 @@ def mock_ce_email_target_data():
 @pytest.fixture()
 def mock_ce_email_compare_data():
     compare_totals = {
-        user1: str(account1_user1_total2),
+        (user1, account1_id, str(account1_user1_total2)),
+        (uncategorized, account1_id, str(account1_unowned_total)),
+        (uncategorized, account3_id, str(account3_user3_total2)),
     }
     return mock_ce_email_usage(compare_totals)
 

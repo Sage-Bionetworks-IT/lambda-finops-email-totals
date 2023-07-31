@@ -61,6 +61,8 @@ def get_resource_totals(target_period, compare_period, minimum_total):
     optionally 'change'; 'total' will map to a float representing the user's
     resource total for this account, and if 'change' is present it will map to a
     float representing percent change from the last month (1.0 is 100% growth).
+    As a special case, a top-level key equal to the empty string will contain
+    data for resources with no owner.
 
     Example:
     ```
@@ -322,15 +324,22 @@ def get_missing_other_tags(owner):
 
 def build_summary(target_period, compare_period, team_sage):
     """
-    Build a convenient data structure representing the recipients and the data
-    we want to include in each email.
+    Build a complex data structure representing the input needed for email
+    templating.
 
-    The first parameter is a TimePeriod dict representing the month we are
-    reporting on. The second parameter is a TimePeriod dict representing the
+    The first function parameter is a TimePeriod dict representing the month we
+    are reporting on. The second parameter is a TimePeriod dict representing the
     month prior to the target month, for calculating percent change. The third
     parameter is a list of valid synapse users for receiving notifications.
 
-    The output will include 3 subkeys under each recipient: 'resources',
+    The top-level data structure is a dictionary with three static keys:
+    'account_names', 'per_user_summary', and 'unowned'.
+
+    The 'account_names' key maps to a dictionary keyed on account IDs and
+    mapping them to their friendly names.
+
+    The 'per_user_summary' key will map to a dictionary keyed on recipient email
+    addresses, and will include 3 subkeys under each recipient: 'resources',
     'missing_other_tag', and 'accounts'.
 
     The 'resources' subkey will have per-account resource totals for the owner,
@@ -346,51 +355,86 @@ def build_summary(target_period, compare_period, team_sage):
     would be included in the 'resources' subkey and the 'accounts' subkey can
     be removed.
 
+    The 'unowned' key will map to a dictionary keyed on account IDs, and
+    each account ID will have a 'total' and 'change' subkey representing the
+    total cost of unowned resources in the account and the percent change from
+    the previous month, respectively.
+
     Example output
     ```
-    user1@example.com:
-        resources:
-            111122223333:
-                total: 10.0
-                change: 1.2
-            222233334444:
-                total: 0.1
-                change: 0.0
-        missing_other_tag:
-            111122223333:
-              - i-0abcdefg
-        accounts:
-            333344445555:
-                total: 20.0
-                change: -2.1
-    user2@example.com:
-        ...
+    account_names:
+        111122223333: account-one
+        222233334444: account-two
+        333344445555: account-three
+    per_user_summary:
+        user1@example.com:
+            resources:
+                111122223333:
+                    total: 10.0
+                    change: 1.2
+                222233334444:
+                    total: 0.1
+                    change: 0.0
+            missing_other_tag:
+                111122223333:
+                  - i-0abcdefg
+            accounts:
+                333344445555:
+                    total: 20.0
+                    change: -2.1
+        user2@example.com:
+            ...
+    unowned:
+        111122223333:
+            total: 1.2
+            change: 0.0
     ```
     """
 
     data = {}
     min_value = float(os.environ['MINIMUM'])
 
-    # Generate 'resources' subkeys and merge them in
-    resources = get_resource_totals(target_period, compare_period, min_value)
-    for owner in resources:
+    # Generate 'resources' subkeys under 'per_user_summary'
+    resources_by_owner = get_resource_totals(target_period, compare_period, min_value)
+    LOG.debug(f"Resource data: {resources_by_owner}")
+
+    # Unowned resource costs will be associated with an empty string owner,
+    # use pop() to remove the unowned data from the dictionary.
+    # While IT-2369 is blocked the data will also include account totals for
+    # accounts tagged with an owner, remove them as they are discovered.
+    unowned = {}
+    if '' in resources_by_owner:
+        unowned = resources_by_owner.pop('')['resources']
+
+    # Merge in the categorized resource data
+    for owner in resources_by_owner:
         if owner not in data:
             data[owner] = {}
-        data[owner]['resources'] = resources[owner]['resources']
-    LOG.debug(data)
+        data[owner]['resources'] = resources_by_owner[owner]['resources']
 
-    # Generate 'accounts' subkeys and merge them in
+    # Generate 'accounts' subkeys
     accounts_dict, account_names = get_account_totals(target_period,
                                                       compare_period,
                                                       min_value)
-    LOG.debug(accounts_dict)
-    LOG.debug(account_names)
+    LOG.debug(f"Account data: {accounts_dict}")
+    LOG.debug(f"Account names: {account_names}")
 
+    # Merge in the account data, and remove from unowned
     for owner in accounts_dict:
         if owner not in data:
             data[owner] = {}
-        data[owner]['accounts'] = accounts_dict[owner]['accounts']
-    LOG.debug(data)
+
+        accounts = accounts_dict[owner]['accounts']
+        data[owner]['accounts'] = accounts
+
+        for account in accounts:
+            if account in unowned:
+                LOG.debug(f"Removing {account} from unowned resources")
+                # remove owned account from unowned resources
+                del unowned[account]
+
+    LOG.debug(f"Uncategorized: {unowned}")
+    LOG.debug(f"Unfiltered data: {data}")
 
     # Filter valid recipients and amend missing tag info
     filtered = {}
@@ -403,9 +447,14 @@ def build_summary(target_period, compare_period, team_sage):
             missing_tags = get_missing_other_tags(recipient)
             if missing_tags:
                 filtered[recipient]['missing_other_tag'] = missing_tags
-    LOG.debug(filtered)
 
-    return filtered, account_names
+    LOG.debug(f"Final summary: {filtered}")
+
+    return {
+        'account_names': account_names,
+        'per_user_summary': filtered,
+        'unowned': unowned,
+    }
 
 
 def lambda_handler(event, context):
@@ -430,12 +479,16 @@ def lambda_handler(event, context):
     team_sage = synapse.get_team_sage_members()
 
     # Build email summary
-    email_summary, account_names = build_summary(target_month,
-                                                 compare_month,
-                                                 team_sage)
+    summary = build_summary(target_month, compare_month, team_sage)
+    per_user = summary['per_user_summary']
+    accounts = summary['account_names']
+    unowned = summary['unowned']
 
-    # Create and send email reports from summary
-    for email in email_summary:
-        html, text = ses.build_email_body(email_summary[email],
-                                          account_names)
-        ses.send_report_email(email, html, text, email_period)
+    # Create and send user reports from summary
+    for email in per_user:
+        user_html, user_text = ses.build_user_email_body(per_user[email], accounts)
+        ses.send_report_email(email, user_html, user_text, email_period)
+
+    # Create and send unowned report to admin
+    unowned_html, unowned_text = ses.build_unowned_email_body(unowned, accounts)
+    ses.send_unowned_email(unowned_html, unowned_text, email_period)
