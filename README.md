@@ -107,12 +107,17 @@ the [pre-commit](https://pre-commit.com/) git hook.
 ### Update Requirements
 
 First, make any needed updates to the base requirements in `Pipfile`, then use
-`pipenv` to regenerate both `Pipfile.lock` and `requirements.txt`. We use
-`pipenv` to control versions in testing, but `sam` relies on `requirements.txt`
-directly for building the container used by the lambda.
+`pipenv` to regenerate `Pipfile.lock`.
 
 ```shell script
-$ pipenv update
+$ pipenv update --dev
+```
+
+We use `pipenv` to control versions in testing, but `sam` relies on
+`requirements.txt` directly for building the lambda artifact, so we dynamically
+generate `requirements.txt` from `Pipfile.lock` before building the artifact.
+
+```shell script
 $ pipenv requirements > requirements.txt
 ```
 
