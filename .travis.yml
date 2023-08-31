@@ -32,10 +32,12 @@ jobs:
     - stage: validate
       script:
         - pipenv run pre-commit run --all-files
+        - pipenv requirements > requirements.txt
         - pipenv run sam build
         - pipenv run python -m pytest tests/ -v
     - stage: deploy
       script:
+        - pipenv requirements > requirements.txt
         - pipenv run sam build
         - pipenv run sam validate --lint
         - |
