@@ -1,6 +1,13 @@
+import os
+
 import pytest
 
+
+# This needs to be set when the ses module is loaded,
+# but its value is not used when running tests
+os.environ['AWS_DEFAULT_REGION'] = 'test-region'
 from email_totals import ses
+
 
 # Constants used by fixtures
 
