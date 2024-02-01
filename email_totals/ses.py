@@ -346,24 +346,37 @@ def build_unowned_email_body(unowned_data, account_names):
     return html_body, text_body
 
 
+def add_cc_list(primary):
+    """
+    Add the CC addresses to the list of recipients, if any
+    """
+    recipients = [primary, ]
+    cc_list = os.environ['CC_LIST'].split(',')
+    if cc_list != ['']:
+        recipients.extend(cc_list)
+    return recipients
+
+
 def send_report_email(recipient, body_html, body_text, period):
     """
     Send a per-user report email
     """
     subject = f"AWS Monthly Cost Report ({period})"
-    send_email(recipient, subject, body_html, body_text)
+    recipients = add_cc_list(recipient)
+    send_email(recipients, subject, body_html, body_text)
 
 
 def send_unowned_email(body_html, body_text, period):
     """
     Send a report on unowned costs to the admin recipient
     """
-    admin = os.environ['ADMIN_EMAIL']
     subject = f"AWS Unowned Costs ({period})"
-    send_email(admin, subject, body_html, body_text)
+    admin = os.environ['ADMIN_EMAIL']
+    recipients = add_cc_list(admin)
+    send_email(recipients, subject, body_html, body_text)
 
 
-def send_email(recipient, subject, body_html, body_text):
+def send_email(recipients, subject, body_html, body_text):
     """
     Send e-mail through SES
     """
@@ -377,9 +390,7 @@ def send_email(recipient, subject, body_html, body_text):
     try:
         response = ses_client.send_email(
             Destination={
-                'ToAddresses': [
-                    recipient,
-                ],
+                'ToAddresses': recipients,
             },
             Message={
                 'Body': {
