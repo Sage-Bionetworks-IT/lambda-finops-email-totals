@@ -21,6 +21,7 @@ users who have been tagged as resource owners.
 | SynapseTeamId      | Synapse Team Id (numeric string)        | `273957`                                | Only send emails to synapse users if they are a member of this Team                  |
 | RestrictRecipients | `True` or `False`                       | `False`                                 | If `True` only send emails to recipients listed in `ApprovedRecipients`              |
 | ApprovedRecipients | Comma-delimited list of email addresses | `''`                                    | If `RestrictRecpipients` is `True`, then only send emails to recipients in this list |
+| CopyRecipients     | Comma-delimited list of email addresses | `''`                                    | CC this list of recipients on all emails                                             |
 
 #### ScheduleExpression
 
@@ -69,6 +70,10 @@ recipients. Useful for testing.
 An allow list of recipient addresses, any recipient not listed here will be
 skipped, only respected when `RestrictRecipients` is `True`. Does not override
 `SkipRecipients`. Useful for testing.
+
+#### CopyRecipients
+
+A list of email addresses to CC on all emails.
 
 ### Triggering
 
@@ -289,7 +294,7 @@ the AWS account must be move out of the
 #### Full Deploy
 
 After moving the AWS account out of the SES Sandbox, redeploy the lambda without
-recipient restrictions.
+recipient restrictions and with any other needed parameters.
 
 ```yaml
 template:
@@ -300,4 +305,5 @@ stack_tags:
   OwnerEmail: "it@sagebase.org"
 parameters:
   RestrictRecipients: "False"
+  CopyRecipients: "aws-costs@sagebase.org"
 ```
