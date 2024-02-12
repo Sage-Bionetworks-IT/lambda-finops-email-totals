@@ -6,6 +6,36 @@ from botocore.stub import Stubber
 from email_totals import ses
 
 
+def test_empty_cc_list(mocker):
+    env_vars = {
+        'CC_LIST': '',
+    }
+    mocker.patch.dict(os.environ, env_vars)
+
+    found_list = ses.add_cc_list('primary')
+    assert found_list == ['primary', ]
+
+
+def test_single_cc_list(mocker):
+    env_vars = {
+        'CC_LIST': 'cc',
+    }
+    mocker.patch.dict(os.environ, env_vars)
+
+    found_list = ses.add_cc_list('primary')
+    assert found_list == ['primary', 'cc']
+
+
+def test_multi_cc_list(mocker):
+    env_vars = {
+        'CC_LIST': 'cc1,cc2',
+    }
+    mocker.patch.dict(os.environ, env_vars)
+
+    found_list = ses.add_cc_list('primary')
+    assert found_list == ['primary', 'cc1', 'cc2']
+
+
 def test_send_report_email(mocker,
                            mock_ses_response):
     recipient = 'user@synapse.org'
@@ -15,6 +45,7 @@ def test_send_report_email(mocker,
 
     env_vars = {
         'SENDER': 'test@example.com',
+        'CC_LIST': 'cc@example.com',
     }
     mocker.patch.dict(os.environ, env_vars)
 
@@ -36,6 +67,7 @@ def test_send_unowned_email(mocker,
     env_vars = {
         'ADMIN_EMAIL': 'admin@example.com',
         'SENDER': 'test@example.com',
+        'CC_LIST': 'cc@example.com',
     }
     mocker.patch.dict(os.environ, env_vars)
 

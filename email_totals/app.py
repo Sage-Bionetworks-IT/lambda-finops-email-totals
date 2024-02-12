@@ -103,6 +103,9 @@ def get_resource_totals(target_period, compare_period, minimum_total):
 
                 account_id = group['Keys'][1]
 
+                if email == '':
+                    LOG.debug(f"Unowned costs in account {account_id}: {amount}")
+
                 # Skip insignificant totals
                 if amount < minimum_total:
                     LOG.info(f"Skipping total less than ${minimum_total} for "
@@ -438,7 +441,7 @@ def build_summary(target_period, compare_period, team_sage):
 
         for account in accounts:
             if account in unowned:
-                LOG.debug(f"Removing {account} from unowned resources")
+                LOG.debug(f"Account {account} is owned by {owner}")
                 # remove owned account from unowned resources
                 del unowned[account]
 

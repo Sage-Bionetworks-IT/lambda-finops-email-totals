@@ -54,6 +54,11 @@ Parameters:
     Description: Email recipient for admin notifications (e.g. uncategorized costs)
     Default: '"Cloud Cost Notifications" <cloud-cost-notifications@sagebase.org>'
 
+  CopyRecipients:
+    Type: String
+    Description: Comma-separated list of email recipients to CC on all reports
+    Default: ''
+
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -111,6 +116,7 @@ Resources:
           MINIMUM: !Ref MinimumValue
           SYNAPSE_TEAM_ID: !Ref SynapseTeamId
           SYNAPSE_TEAM_DOMAIN: !Ref SynapseTeamDomain
+          CC_LIST: !Ref CopyRecipients
       Events:
         ScheduledEventTrigger:
           Type: Schedule
