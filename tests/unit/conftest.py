@@ -35,6 +35,8 @@ account4_name = 'mock-account-user4'
 account1_user1_total1 = 30.0
 account1_user1_total2 = 20.0
 account1_user1_change = 0.5
+account1_user1_invalid_ce = ['i-invalid', 'NoResourceId']
+account1_user1_invalid_app = ['i-invalid']
 
 account1_user2_total = 32.10
 account1_user2_missing = ['i-0abcdefg', 'i-1hijklmnop']
@@ -130,6 +132,14 @@ def mock_app_account_names():
 
 
 @pytest.fixture()
+def mock_app_invalid_tags_user1():
+    response = {
+        account1_id: account1_user1_invalid_app
+    }
+    return response
+
+
+@pytest.fixture()
 def mock_app_missing_tags_user2():
     response = {
         account1_id: account1_user2_missing
@@ -166,6 +176,9 @@ def mock_app_per_user():
                     'change': account1_user1_change
                 }
             },
+            'invalid_other_tag': {
+                account1_id: account1_user1_invalid_app
+            }
         },
         user2: {
             'resources': {
@@ -341,10 +354,10 @@ def mock_ce_email_compare_data():
     return mock_ce_email_usage(compare_totals)
 
 
-def mock_ce_missing_tag_response(account_id, user_missing):
+def mock_ce_response(account_id, resources):
     groups = []
 
-    for r in user_missing:
+    for r in resources:
         group = {
             'Keys': [account_id, r],
             'Metrics': {}
@@ -364,15 +377,18 @@ def mock_ce_missing_tag_response(account_id, user_missing):
 
 
 @pytest.fixture()
+def mock_ce_invalid_tags_user1():
+    return mock_ce_response(account1_id, account1_user1_invalid_ce)
+
+
+@pytest.fixture()
 def mock_ce_missing_tags_user2():
-    return mock_ce_missing_tag_response(account1_id,
-                                        account1_user2_missing)
+    return mock_ce_response(account1_id, account1_user2_missing)
 
 
 @pytest.fixture()
 def mock_ce_missing_tags_user3():
-    return mock_ce_missing_tag_response(account3_id,
-                                        account3_user3_missing_ce)
+    return mock_ce_response(account3_id, account3_user3_missing_ce)
 
 
 @pytest.fixture()

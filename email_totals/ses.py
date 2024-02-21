@@ -52,37 +52,66 @@ def build_paragraph(text, html=False):
     return output
 
 
-def build_tags_table(missing, account_names, html=False):
+def build_tags_table(missing, invalid, account_names, html=False):
+    """
+    Build a table about missing or invalid CostCenterOther tags
+    """
     output = ''
+    row_i = 0  # row index for coloring table rows
 
     if html:
         output += ("<table border='1' padding='10' width='600' "
                    "style='border-collapse: collapse; text-align: center;'>"
                    "<tr style='background-color: LightSteelBlue'>"
-                   "<th>Account Name (Account ID)</th>"
-                   "<th>Resources Missing CostCenterOther Tags</th></tr>")
-        row_i = 0  # row index for coloring table rows
+                   "<th>Account Name (Account ID)</th>")
+        if missing:
+            output += "<th>Resources missing CostCenterOther tags</th>"
+        if invalid:
+            output += "<th>Resources with unexpected CostCenterOther tags</th></tr>"
     else:
-        output += '\t'.join(['Account Name (Account ID)',
-                             'Resources Missing CostCenterOther Tags'])
+        output += 'Account Name (Account ID)'
+        if missing:
+            output += '\tResources missing CostCenterOther tags'
+        if invalid:
+            output += '\tResources with unexpected CostCenterOther tags'
+        output += '\n'
 
+    accounts = []
     for account_id in missing:
+        accounts.append(account_id)
+    for account_id in invalid:
+        accounts.append(account_id)
+    LOG.debug(f"Accounts: {accounts}")
+
+    for account_id in accounts:
         account_name = account_names[account_id]
 
         # Convert list to string
-        untagged = json.dumps(missing[account_id])
+        untagged = ''
+        if account_id in missing:
+            untagged = json.dumps(missing[account_id])
+        unexpected = ''
+        if account_id in invalid:
+            unexpected = json.dumps(invalid[account_id])
 
         if html:
-            _td = (f"<td>{account_name} ({account_id})</td>"
-                   f"<td>{untagged}</td>")
+            _td = f"<td>{account_name} ({account_id})</td>"
+            if missing:
+                _td += f"<td>{untagged}</td>"
+            if invalid:
+                _td += f"<td>{unexpected}</td>"
 
             _style = _table_row_style(row_i)
             output += f"<tr {_style}>{_td}</tr>"
             row_i += 1
 
         else:
-            _td = [account_name, account_id, untagged]
-            output = '\t'.join(_td) + '\n'
+            _td = f"{account_name} ({account_id})"
+            if missing:
+                _td += f"\t{untagged}"
+            if invalid:
+                _td += f"\t{unexpected}"
+            output += f"{_td}\n"
 
     if html:
         output += "</table><br/>"
@@ -92,7 +121,7 @@ def build_tags_table(missing, account_names, html=False):
 
 def build_usage_table(usage, account_names, total=None, html=False):
     """
-    Build paragraph about directly-tagged resources
+    Build table about directly-tagged resources
 
     Example usage block:
     ```
@@ -119,7 +148,7 @@ def build_usage_table(usage, account_names, total=None, html=False):
         row_i = 0  # row index for coloring table rows
     else:
         output += '\t'.join(['Account Name (Account ID)',
-                             total, 'Month-over-Month Change'])
+                             total, 'Month-over-Month Change']) + '\n'
 
     for account_id in usage:
         account_name = account_names[account_id]
@@ -248,11 +277,11 @@ def build_user_email_body(summary, account_names):
 
         return output
 
-    def _build_missing_tags(missing, html=False):
+    def _build_tags(missing, invalid, html=False):
         """
-        Build paragraph about resources missing CostCenterOther
+        Build paragraph about missing or invalid CostCenterOther tags
 
-        Example missing block:
+        Example input block:
         ```
         111122223333:
             - i-0abcdefg
@@ -261,15 +290,26 @@ def build_user_email_body(summary, account_names):
         ```
         """
 
+        descr_missing = ('Some of the above resources have a "CostCenter" tag '
+                         'value of "Other / 000001" but do not have a required '
+                         '"CostCenterOther" tag. ')
+
+        descr_invalid = ('Some of the above resources have a "CostCenterOther" '
+                         'tag, but do not have "CostCenter" set to "Other / 000001". ')
+
+        descr_help = ('If you need assistance modifying the '
+                      'cost center tags, please contact Sage IT.')
+
+        descr = ''
+        if missing:
+            descr += descr_missing
+        if invalid:
+            descr += descr_invalid
+        descr += descr_help
+
         output = ''
-
-        descr = ('Some of the above resources have a "CostCenter" tag value '
-                 'of "Other / 000001" but do not have a required '
-                 '"CostCenterOther" tag. If you need assistance adding the '
-                 'required tag, please contact Sage IT.')
-
         output += build_paragraph(descr, html)
-        output += build_tags_table(missing, account_names, html)
+        output += build_tags_table(missing, invalid, account_names, html)
 
         return output
 
@@ -300,9 +340,20 @@ def build_user_email_body(summary, account_names):
         html_body += _build_accounts_usage(summary['accounts'], True)
         text_body += _build_accounts_usage(summary['accounts'], False)
 
+    invalid_summary = {}
+    missing_summary = {}
     if 'missing_other_tag' in summary:
-        html_body += _build_missing_tags(summary['missing_other_tag'], True)
-        text_body += _build_missing_tags(summary['missing_other_tag'], False)
+        missing_summary = summary['missing_other_tag']
+        LOG.debug(f"Missing CostCenterOther: {missing_summary}")
+    if 'invalid_other_tag' in summary:
+        invalid_summary = summary['invalid_other_tag']
+        LOG.debug(f"Unexpected CostCenterOther: {invalid_summary}")
+
+    if invalid_summary or missing_summary:
+        html_body += _build_tags(missing_summary, invalid_summary, True)
+        text_body += _build_tags(missing_summary, invalid_summary, False)
+    else:
+        LOG.debug("Skipping CostCenterOther section")
 
     docs_prose = ('You can use AWS Cost Explorer to analyze these expenses by '
                   'filtering on the "Owner Email" category and/or account ID')

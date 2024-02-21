@@ -116,6 +116,16 @@ def test_account_totals(mocker,
     assert found_dict == mock_app_account_dict
 
 
+def test_invalid_other_tag(mocker,
+                           mock_app_invalid_tags_user1,
+                           mock_ce_invalid_tags_user1):
+    mocker.patch('email_totals.ce.get_ce_invalid_tag_for_email',
+                 return_value=mock_ce_invalid_tags_user1)
+
+    found_invalid_tags = app.get_invalid_other_tags('ignored')
+    assert found_invalid_tags == mock_app_invalid_tags_user1
+
+
 @pytest.mark.parametrize(
     "mock_ce_fixture,mock_app_fixture",
     [
@@ -141,12 +151,14 @@ def test_build_summary(mocker,
                        mock_app_resource_dict,
                        mock_app_account_dict,
                        mock_app_account_names,
+                       mock_app_invalid_tags_user1,
                        mock_app_missing_tags_user2,
                        mock_app_missing_tags_user3,
                        mock_app_unowned,
                        mock_app_build_summary,
                        mock_ce_period,
                        mock_team_sage,
+                       mock_user1,
                        mock_user2,
                        mock_user3):
     # The mocker will call the side_effect function with the same
@@ -154,10 +166,13 @@ def test_build_summary(mocker,
     def _missing_tags_side_effect(email):
         if email == mock_user2:
             return mock_app_missing_tags_user2
-
         if email == mock_user3:
             return mock_app_missing_tags_user3
+        return {}
 
+    def _invalid_tags_side_effect(email):
+        if email == mock_user1:
+            return mock_app_invalid_tags_user1
         return {}
 
     env_vars = {
@@ -173,6 +188,9 @@ def test_build_summary(mocker,
 
     mocker.patch('email_totals.app.get_missing_other_tags',
                  side_effect=_missing_tags_side_effect)
+
+    mocker.patch('email_totals.app.get_invalid_other_tags',
+                 side_effect=_invalid_tags_side_effect)
 
     mocker.patch('email_totals.ses.valid_recipient',
                  return_value=True)

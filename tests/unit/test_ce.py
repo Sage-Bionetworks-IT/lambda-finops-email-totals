@@ -28,6 +28,18 @@ def test_ce_emails(mock_ce_period,
         _stub.assert_no_pending_responses()
 
 
+def test_ce_invalid_tags(mock_ce_invalid_tags_user1):
+    with Stubber(ce.ce_client) as _stub:
+        _stub.add_response('get_cost_and_usage_with_resources',
+                           mock_ce_invalid_tags_user1)
+
+        # validate our response
+        ce.get_ce_invalid_tag_for_email('email')
+
+        # assert no other responses
+        _stub.assert_no_pending_responses()
+
+
 @pytest.mark.parametrize(
     "mock_ce_fixture",
     [
