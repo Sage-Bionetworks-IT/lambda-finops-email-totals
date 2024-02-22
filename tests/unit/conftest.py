@@ -3,10 +3,10 @@ import os
 import pytest
 
 
-# This needs to be set when the ses module is loaded,
+# This needs to be set when the modules are loaded,
 # but its value is not used when running tests
 os.environ['AWS_DEFAULT_REGION'] = 'test-region'
-from email_totals import ses
+from email_totals import ce, ses
 
 
 # Constants used by fixtures
@@ -231,7 +231,7 @@ def mock_ce_account_usage(account_totals):
         group = {
             'Keys': [account, ],
             'Metrics': {
-                'UnblendedCost': {
+                ce.cost_metric: {
                     'Amount': account_totals[account]
                 }
             }
@@ -306,7 +306,7 @@ def mock_ce_email_usage(user_totals):
                 account_id
             ],
             'Metrics': {
-                'UnblendedCost': {
+                ce.cost_metric: {
                     'Amount': amount
                 }
             }

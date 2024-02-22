@@ -8,6 +8,8 @@ LOG.setLevel(logging.DEBUG)
 
 ce_client = boto3.client('ce')
 
+cost_metric = 'NetAmortizedCost'
+
 # get_cost_and_usage_with_resources() can only look back at most 14 days,
 # but we only need current resources missing tags, so hard-code the period
 # to be yesterday; store it in a global variable to avoid recalculating it
@@ -28,7 +30,7 @@ def get_ce_email_costs(period):
         TimePeriod=period,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         GroupBy=[{
             'Type': 'COST_CATEGORY',
@@ -51,7 +53,7 @@ def get_ce_account_costs(period):
         TimePeriod=period,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         GroupBy=[{
             'Type': 'DIMENSION',
@@ -73,7 +75,7 @@ def get_ce_invalid_tag_for_email(email):
         TimePeriod=yesterday,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         Filter={
             'And': [{
@@ -122,7 +124,7 @@ def get_ce_missing_tag_for_email(email):
         TimePeriod=yesterday,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         Filter={"And": [
             {'CostCategories': {

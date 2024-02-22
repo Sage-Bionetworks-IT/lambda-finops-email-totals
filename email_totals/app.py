@@ -86,7 +86,7 @@ def get_resource_totals(target_period, compare_period, minimum_total):
         resources = {}
         for result in results_by_time:
             for group in result['Groups']:
-                amount = float(group['Metrics']['UnblendedCost']['Amount'])
+                amount = float(group['Metrics'][ce.cost_metric]['Amount'])
 
                 # Keys preserve the order defined in the GroupBy parameter from
                 # the call to get_cost_and_usage().
@@ -194,7 +194,7 @@ def get_account_totals(target_period, compare_period, minimum_total):
         account_totals = {}
         for result in results_by_time:
             for group in result['Groups']:
-                amount = float(group['Metrics']['UnblendedCost']['Amount'])
+                amount = float(group['Metrics'][ce.cost_metric]['Amount'])
 
                 # Keys preserve the order defined in the GroupBy parameter from
                 # the call to get_cost_and_usage().
