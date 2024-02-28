@@ -8,6 +8,8 @@ LOG.setLevel(logging.DEBUG)
 
 ce_client = boto3.client('ce')
 
+cost_metric = 'NetAmortizedCost'
+
 # get_cost_and_usage_with_resources() can only look back at most 14 days,
 # but we only need current resources missing tags, so hard-code the period
 # to be yesterday; store it in a global variable to avoid recalculating it
@@ -28,7 +30,7 @@ def get_ce_email_costs(period):
         TimePeriod=period,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         GroupBy=[{
             'Type': 'COST_CATEGORY',
@@ -51,11 +53,60 @@ def get_ce_account_costs(period):
         TimePeriod=period,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         GroupBy=[{
             'Type': 'DIMENSION',
             'Key': 'LINKED_ACCOUNT',
+        }],
+    )
+
+    return response
+
+
+def get_ce_invalid_tag_for_email(email):
+    """
+    Get cost category resource information for a given owner email and
+    grouped by account, filtered for resources where the CostCenterOther
+    is set and CostCenter is not 'Other / 000001'.
+    """
+
+    response = ce_client.get_cost_and_usage_with_resources(
+        TimePeriod=yesterday,
+        Granularity='MONTHLY',
+        Metrics=[
+            cost_metric,
+        ],
+        Filter={
+            'And': [{
+                'CostCategories': {
+                    'Key': 'Owner Email',
+                    'Values': [email, ],
+                    'MatchOptions': ['EQUALS', ],
+                }
+            }, {
+                'Not': {
+                    'Tags': {
+                        'Key': 'CostCenter',
+                        'Values': ['Other / 000001', ],
+                        'MatchOptions': ['EQUALS', ],
+                    }
+                }
+            }, {
+                'Not': {
+                    'Tags': {
+                        'Key': 'CostCenterOther',
+                        'MatchOptions': ['ABSENT', ],
+                    }
+                }
+            }
+        ]},
+        GroupBy=[{
+            'Type': 'DIMENSION',
+            'Key': 'LINKED_ACCOUNT',
+        }, {
+            'Type': 'DIMENSION',
+            'Key': 'RESOURCE_ID',
         }],
     )
 
@@ -73,7 +124,7 @@ def get_ce_missing_tag_for_email(email):
         TimePeriod=yesterday,
         Granularity='MONTHLY',
         Metrics=[
-            'UnblendedCost',
+            cost_metric,
         ],
         Filter={"And": [
             {'CostCategories': {

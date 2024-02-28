@@ -86,7 +86,7 @@ def get_resource_totals(target_period, compare_period, minimum_total):
         resources = {}
         for result in results_by_time:
             for group in result['Groups']:
-                amount = float(group['Metrics']['UnblendedCost']['Amount'])
+                amount = float(group['Metrics'][ce.cost_metric]['Amount'])
 
                 # Keys preserve the order defined in the GroupBy parameter from
                 # the call to get_cost_and_usage().
@@ -194,7 +194,7 @@ def get_account_totals(target_period, compare_period, minimum_total):
         account_totals = {}
         for result in results_by_time:
             for group in result['Groups']:
-                amount = float(group['Metrics']['UnblendedCost']['Amount'])
+                amount = float(group['Metrics'][ce.cost_metric]['Amount'])
 
                 # Keys preserve the order defined in the GroupBy parameter from
                 # the call to get_cost_and_usage().
@@ -291,12 +291,10 @@ def get_account_totals(target_period, compare_period, minimum_total):
     return output, account_names
 
 
-def get_missing_other_tags(owner):
+def _parse_ce_tag_results(result_data):
     """
-    Query cost explorer for resource usage by the given resource owner,
-    filtering for resources missing a required CostCenterOther tag,
-    and grouped by account id, then generate a dictionary mapping an
-    account ID to a list of resource IDs.
+    Parse data returned by cost explorer and generate a dictionary mapping
+    an account ID to a list of resource IDs.
 
     Example:
     ```
@@ -308,9 +306,7 @@ def get_missing_other_tags(owner):
 
     output = {}
 
-    missing_data = ce.get_ce_missing_tag_for_email(owner)
-
-    for result in missing_data['ResultsByTime']:
+    for result in result_data['ResultsByTime']:
         for group in result['Groups']:
             # Keys preserve the order defined in the GroupBy parameter from
             # the call to get_cost_and_usage().
@@ -331,7 +327,31 @@ def get_missing_other_tags(owner):
 
             # Add this resource to the account
             output[account_id].append(resource)
+
     return output
+
+
+def get_invalid_other_tags(owner):
+    """
+    Query cost explorer for resource usage by the given resource owner,
+    filtering for resources with an unexpected CostCenterOther tag (i.e.
+    CostCenter is not set to Other).
+    """
+
+    invalid_data = ce.get_ce_invalid_tag_for_email(owner)
+    invalid_tags = _parse_ce_tag_results(invalid_data)
+    return invalid_tags
+
+
+def get_missing_other_tags(owner):
+    """
+    Query cost explorer for resource usage by the given resource owner,
+    filtering for resources missing a required CostCenterOther tag.
+    """
+
+    missing_data = ce.get_ce_missing_tag_for_email(owner)
+    missing_tags = _parse_ce_tag_results(missing_data)
+    return missing_tags
 
 
 def build_summary(target_period, compare_period, team_sage):
@@ -359,6 +379,9 @@ def build_summary(target_period, compare_period, team_sage):
 
     The 'missing_other_tag' subkey will list owner resources that are missing a
     required 'CostCenterOther' tag.
+
+    The 'invalid_other_tag' subkey will list owner resources tagged with a
+    'CostCenterOther' tag without 'CostCenter' set to 'Other'.
 
     Since IT-2369 is blocked, the owner category does not include accounts
     tagged with an account owner. As a workaround, we add an 'accounts' subkey
@@ -459,6 +482,10 @@ def build_summary(target_period, compare_period, team_sage):
             missing_tags = get_missing_other_tags(recipient)
             if missing_tags:
                 filtered[recipient]['missing_other_tag'] = missing_tags
+
+            invalid_tags = get_invalid_other_tags(recipient)
+            if invalid_tags:
+                filtered[recipient]['invalid_other_tag'] = invalid_tags
 
     LOG.debug(f"Final summary: {filtered}")
 
