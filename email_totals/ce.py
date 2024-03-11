@@ -2,13 +2,21 @@ import logging
 from datetime import datetime, timedelta
 
 import boto3
+from botocore.config import Config as BotoConfig
+
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
-ce_client = boto3.client('ce')
-
 cost_metric = 'NetAmortizedCost'
+
+# Use adaptive mode in an attempt to optimize retry back-off
+ce_config = BotoConfig(
+    retries = {
+        'mode': 'adaptive',  # default mode is legacy
+    }
+)
+ce_client = boto3.client('ce', config=ce_config)
 
 # get_cost_and_usage_with_resources() can only look back at most 14 days,
 # but we only need current resources missing tags, so hard-code the period
