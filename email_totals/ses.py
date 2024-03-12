@@ -462,11 +462,6 @@ def send_email(recipients, subject, body_html, body_text):
             Source=sender,
         )
 
-        # We need to rate limit our calls to 'send_email', our current SES
-        # quota allows for sending 14 emails per second, sleep for 72ms after
-        # each call to send a maximum of 14 emails in 1008ms.
-        time.sleep(0.072)
-
     # Display an error if something goes wrong.
     except ClientError as e:
         LOG.exception(e)
