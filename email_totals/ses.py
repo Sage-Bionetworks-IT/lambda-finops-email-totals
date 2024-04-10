@@ -272,8 +272,10 @@ def build_user_email_body(summary, account_names):
                 if account_id in resource_usage:
                     del resource_usage[account_id]
 
-        output += build_paragraph(descr, html)
-        output += build_usage_table(resource_usage, account_names, html=html)
+        # Don't report empty usage
+        if resource_usage:
+            output += build_paragraph(descr, html)
+            output += build_usage_table(resource_usage, account_names, html=html)
 
         return output
 
