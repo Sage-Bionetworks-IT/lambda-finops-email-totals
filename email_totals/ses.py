@@ -171,7 +171,7 @@ def build_usage_table(usage, account_names, total=None, html=False):
 
         else:
             _td = [account_name, account_id, total, change]
-            output = '\t'.join(_td) + '\n'
+            output += '\t'.join(_td) + '\n'
 
     if html:
         output += "</table><br/>"
@@ -266,14 +266,16 @@ def build_user_email_body(summary, account_names):
         descr = ('You are tagged as owning resources in the following '
                  'accounts: ')
 
-        # Don't report the same account twice
+        # Don't report resources if we also own the account
         if account_usage is not None:
             for account_id in account_usage:
                 if account_id in resource_usage:
                     del resource_usage[account_id]
 
-        output += build_paragraph(descr, html)
-        output += build_usage_table(resource_usage, account_names, html=html)
+        # Only generate output if we still have resource usage
+        if resource_usage:
+            output += build_paragraph(descr, html)
+            output += build_usage_table(resource_usage, account_names, html=html)
 
         return output
 
@@ -322,8 +324,8 @@ def build_user_email_body(summary, account_names):
 
     text_body = f"{title}\n{intro}\n"
 
-    if 'resources' in summary:
-        if 'accounts' in summary:
+    if 'resources' in summary and summary['resources']:
+        if 'accounts' in summary and summary['accounts']:
             html_body += _build_resource_usage(summary['resources'],
                                                summary['accounts'],
                                                html=True)

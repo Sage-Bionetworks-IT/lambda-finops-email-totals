@@ -120,6 +120,7 @@ def get_resource_totals(target_period, compare_period, minimum_total):
                 # If this account is already listed, the email is a duplicate
                 # this can happen if it is tagged with different casing.
                 if account_id in resources[email]['resources']:
+                    LOG.debug(f"duplicate entry found")
                     resources[email]['resources'][account_id]['total'] += amount
                 else:
                     resources[email]['resources'][account_id] = {'total': amount}
@@ -286,7 +287,9 @@ def get_account_totals(target_period, compare_period, minimum_total):
                 pct_change = (target_total / compare_total) - 1
                 account_dict['accounts'][account]['change'] = pct_change
 
-        output[owner] = account_dict
+        # Only add the subkey for the owner if its not empty
+        if account_dict['accounts']:
+            output[owner] = account_dict
 
     return output, account_names
 
