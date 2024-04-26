@@ -299,13 +299,8 @@ def build_user_email_body(summary, account_names):
         descr_invalid = ('Some of the above resources have a "CostCenterOther" '
                          'tag, but do not have "CostCenter" set to "Other / 000001". ')
 
-        descr_help = ('To accurately track project-related costs, a cost center '
-                      'must be specified. In order to update tags, visit the '
-                      'Provisioned Products view of Service Catalog, select '
-                      'the effected resource, select Actions > Update, '
-                      'and add a CostCenterOther tag with an appropriate value '
-                      f'from https://sagebionetworks.jira.com/wiki/spaces/IT/pages/2553544733/Finance+Program+Codes')
-
+        descr_help = ('To accurately track project-related costs, a cost center must '
+                      'be specified. If you need help updating tags, contact Sage IT.')
         descr = ''
         if missing:
             descr += descr_missing
