@@ -299,9 +299,8 @@ def build_user_email_body(summary, account_names):
         descr_invalid = ('Some of the above resources have a "CostCenterOther" '
                          'tag, but do not have "CostCenter" set to "Other / 000001". ')
 
-        descr_help = ('If you need assistance modifying the '
-                      'cost center tags, please contact Sage IT.')
-
+        descr_help = ('To accurately track project-related costs, a cost center must '
+                      'be specified. If you need help updating tags, contact Sage IT.')
         descr = ''
         if missing:
             descr += descr_missing
