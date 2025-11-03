@@ -103,7 +103,7 @@ Resources:
     Properties:
       Handler: email_totals/app.lambda_handler
       CodeUri: .
-      Runtime: python3.9
+      Runtime: python3.12
       MemorySize: 128
       Role: !GetAtt MonthlyServicesUsageLambdaRole.Arn
       Environment:
